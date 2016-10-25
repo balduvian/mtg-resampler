@@ -30,6 +30,7 @@ public class RandMtg {
 	BufferedImage resample;
 	BufferedImage desample;
 	BufferedImage[][] ppp;
+	int[][][] lit;
 	
 	public void getPools(String path){
 		File folder = new File(path);
@@ -119,36 +120,81 @@ public class RandMtg {
 		for(int i=0;i<angel.size();i++){
 			cards.add(angel.get(i));
 		}
-		//WITH: 11.03
-		//WITHOUT: 
+		int ccount  =0;
+		int ls = 27;
+		lit = new int[ls][ls][ls]; //BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+		double lratio = (double)ls/(double)256;
+		for(int i =0;i<cpool.size();i++){
+			Color cc = cpool.get(i);
+			if(lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)]==0){
+				ccount++;
+			}
+			lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)] = i+1;
+		}
+		int[][][] tlit = new int[ls][ls][ls];
+		while(ccount<ls*ls*ls){
+			for(int r =0;r<ls;r++){
+				for(int g =0;g<ls;g++){
+					for(int b =0;b<ls;b++){
+						tlit[r][g][b] = lit[r][g][b];
+					}
+				}
+			}
+			for(int r =0;r<ls;r++){
+				for(int g =0;g<ls;g++){
+					for(int b =0;b<ls;b++){
+						if(lit[r][g][b] != 0){
+							int sel = lit[r][g][b];
+							for(int z=-1;z<=1;z++){
+								for(int y=-1;y<=1;y++){
+									for(int x=-1;x<=1;x++){
+										if(r+z>-1&&r+z<ls&&g+y>-1&&g+y<ls&&b+x>-1&&b+x<ls&&lit[r+z][g+y][b+x]==0&&tlit[r+z][g+y][b+x]==0){
+											tlit[r+z][g+y][b+x] = sel;
+											ccount++;
+											System.out.println(ccount+" | "+r+" "+g+" "+b);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			for(int r =0;r<ls;r++){
+				for(int g =0;g<ls;g++){
+					for(int b =0;b<ls;b++){
+						lit[r][g][b] = tlit[r][g][b];
+					}
+				}
+			}
+		}
+		
 		int hhh = (int)((double)s.getHeight()/(double)pich*scl);
 		int www = (int)((double)s.getWidth()/(double)picw*scl);
 		
 		BufferedImage sampp = new BufferedImage(www,hhh,BufferedImage.TYPE_INT_RGB);
 		ppp = new BufferedImage[hhh][www];
-		//LinkedList<Integer[]> notin = new LinkedList<Integer[]>();
-		//LinkedList<Integer[]> in = new LinkedList<Integer[]>();
 		desample = new BufferedImage(www*picw,hhh*pich,BufferedImage.TYPE_INT_ARGB);
 		for(int y=0;y<hhh;y++){
 			for(int x=0;x<www;x++){
 				double wiw = ((double)s.getWidth()/(double)www);
 				double hih = ((double)s.getHeight()/(double)hhh);
 				sampp.setRGB(x, y, getAvg(crop(s,(int)(x*wiw),(int)(y*hih),(int)(x*wiw+wiw),(int)(y*hih+hih))).getRGB());
+				
 				Color tc = new Color(sampp.getRGB(x, y));
+				int vari = lit[(int)(tc.getRed()*lratio)][(int)(tc.getGreen()*lratio)][(int)(tc.getBlue()*lratio)]-1;
+				BufferedImage tb = pool.get(vari);
+				ppp[y][x] = tb;
+				Graphics g = desample.createGraphics();
+				g.drawImage(pool.get(vari), x*tb.getWidth(), y*tb.getHeight(), tb.getWidth(), tb.getHeight(), null);
+				if(!rep){
+					pool.remove(vari);
+					cpool.remove(vari);
+				}
+				foundln(www, hhh, vari, x, y);
+				/*
 				overloop: while(true){
 					//LinkedList<Integer> vari = new LinkedList<Integer>();
-					/*for(int i=0;i<in.size();i++){
-						int ttemp = 0;
-						ttemp += Math.abs(new Color(in.get(i)[0]).getRed()-tc.getRed());
-						ttemp += Math.abs(new Color(in.get(i)[0]).getGreen()-tc.getGreen());
-						ttemp += Math.abs(new Color(in.get(i)[0]).getBlue()-tc.getBlue());
-						if(ttemp<2){
-							ppp[y][x] = pool.get(in.get(i)[1]);
-							foundln(www, hhh, in.get(i)[1], x, y);
-							break overloop;
-						}
-					}*/
-					//
 					int[] vari = {999,0};
 					for(int i=0;i<cpool.size();i++){
 						int ttemp=0;
@@ -171,37 +217,12 @@ public class RandMtg {
 						}
 						foundln(www, hhh, vari[1], x, y);
 						break overloop;
-						/*if(in.size()<50){
-							for(int i=0;i<notin.size();i++){
-								int ttemp = 0;
-								ttemp += Math.abs(new Color(notin.get(i)[0]).getRed()-tc.getRed());
-								ttemp += Math.abs(new Color(notin.get(i)[0]).getGreen()-tc.getGreen());
-								ttemp += Math.abs(new Color(notin.get(i)[0]).getBlue()-tc.getBlue());
-								if(ttemp<2){
-									if(!in.contains(notin.get(i))){               //AAAAAAADDDDDDDDDDDDDDDDDDDIIIIIIIIINNNNNNNNNNNN
-										Integer[] ctemp = {notin.get(i)[0], vari[1]};
-										in.add(ctemp);
-										notin.remove(i);							
-									}
-								}
-							}
-						}
 						Integer[] ctemp = {tc.getRGB(), vari[1]};
-						notin.addFirst(ctemp);
-						if(notin.size()>5){
-							notin.removeLast();
-						}*/
 					}
-				}
+				}*/
 			}
 		}
-		/*BufferedImage savv = new BufferedImage(www*picw,hhh*pich,BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g2 = savv.createGraphics();
-		for(int y=0;y<ppp.length;y++){
-			for(int x=0;x<ppp[y].length;x++){
-				g2.drawImage(ppp[y][x], x*picw, y*pich, picw, pich, null);
-			}
-		}8*/
+		System.out.println("SAMPLED");
 		File f = new File(genHex(5)+".png");
 		try {
 			ImageIO.write(desample, "PNG", f);
@@ -213,7 +234,7 @@ public class RandMtg {
 		ww = new Window();
 		try{ def = ImageIO.read(getClass().getResource("Image.jpg"));} catch (IOException e) {}
 		//try{ resample = ImageIO.read(getClass().getResource("backk.jpg"));} catch (IOException e) {}
-		try{ resample = ImageIO.read(new File("C:\\Users\\Emmett\\Desktop\\source - texture\\colorful.jpg"));} catch (IOException e) {
+		try{ resample = ImageIO.read(new File("C:\\Users\\Emmett\\Desktop\\source - texture\\chameleon.jpg"));} catch (IOException e) {
 			e.printStackTrace();
 		}
 		//resample = getImgur();
@@ -236,7 +257,7 @@ public class RandMtg {
 				cards.add(now);
 				colors.add(getAvg(now));
 				System.out.println("got "+(i+1)+" out of "+times);
-				String id = genHex(4);
+				String id = genHex(5);
 				try {
 					//File f = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump\\"+id+".png");
 					File f = new File(System.getProperty("user.dir")+"\\dump\\"+id+".png");
@@ -248,7 +269,7 @@ public class RandMtg {
 			}
 		}
 		getPools(System.getProperty("user.dir")+"\\dump");
-		resample(resample,cards,colors,30,21,1.5,true);//RESAMPLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+		resample(resample,cards,colors,30,21,7,true);//RESAMPLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 	}
 	
 	public String genHex(int l){
@@ -299,7 +320,7 @@ public class RandMtg {
 	
 	public class Window extends JFrame{
 		
-		double scale = 1;
+		double scale = 0.3;
 		
 		public Window(){
 			setSize(800,480);
@@ -354,9 +375,11 @@ public class RandMtg {
 						double h = ppp[0][0].getHeight(this)*scale;
 						g2.drawImage(resample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale),this);
 						g2.drawImage(desample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale),this);
-						//for(int y=0;y<ppp.length;y++){
-						//	for(int x=0;x<ppp[y].length;x++){
-						//		g2.drawImage(ppp[y][x], (int)(x*w), (int)(y*h), (int)Math.ceil(w), (int)Math.ceil(h), this);
+						//for(int y=0;y<lit[0].length;y++){
+						//	for(int x=0;x<lit[0][0].length;x++){
+						//		double u = 256/27;
+						//		g2.setColor(new Color(0,(int)(y*u),(int)(x*u)));
+						//		g2.fillRect((int)(x*15), (int)(y*15), (int)Math.ceil(15), (int)Math.ceil(15));
 						//	}
 						//}
 						revalidate();
