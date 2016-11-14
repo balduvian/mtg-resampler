@@ -2,28 +2,48 @@ package sampler;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.LayoutManager;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.awt.font.LayoutPath;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.LinkedList;
 import javax.imageio.ImageIO;
+import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextPane;
+import javax.swing.border.Border;
+import javax.swing.border.LineBorder;
 
 public class RandMtg {
 	
 	Window ww;
 	LinkedList<BufferedImage> cards = new LinkedList<BufferedImage>();
+	LinkedList<BufferedImage> full = new LinkedList<BufferedImage>();
 	LinkedList<Color> colors = new LinkedList<Color>();
 	int times = 500;
 	BufferedImage def;
@@ -31,16 +51,88 @@ public class RandMtg {
 	BufferedImage desample;
 	BufferedImage[][] ppp;
 	int[][][] lit;
+	double lratio;
+	boolean ready = false;
+	
+	public BufferedImage buffer(Image i){
+		BufferedImage b = new BufferedImage(i.getWidth(null),i.getHeight(null),BufferedImage.TYPE_INT_RGB);
+		Graphics2D g = b.createGraphics();
+		g.drawImage(i, 0, 0, null);
+		return b;	
+	}
+	
+	public void setup(){
+		getPools(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump"); //remmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+		getLit(colors);
+	}
+	
+	public void getLit(LinkedList<Color> cpool){
+		int ccount  =0;
+		int ls = 27;
+		lit = new int[ls][ls][ls]; 
+		lratio = (double)ls/(double)256;
+		for(int i =0;i<cpool.size();i++){
+			Color cc = cpool.get(i);
+			if(lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)]==0){
+				ccount++;
+			}
+			lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)] = i+1;
+		}
+		int[][][] tlit = new int[ls][ls][ls];
+		while(ccount<ls*ls*ls){
+			for(int r =0;r<ls;r++){
+				for(int g =0;g<ls;g++){
+					for(int b =0;b<ls;b++){
+						tlit[r][g][b] = lit[r][g][b];
+					}
+				}
+			}
+			for(int r =0;r<ls;r++){
+				for(int g =0;g<ls;g++){
+					for(int b =0;b<ls;b++){
+						if(lit[r][g][b] != 0){
+							int sel = lit[r][g][b];
+							for(int z=-1;z<=1;z++){
+								for(int y=-1;y<=1;y++){
+									for(int x=-1;x<=1;x++){
+										if(r+z>-1&&r+z<ls&&g+y>-1&&g+y<ls&&b+x>-1&&b+x<ls&&lit[r+z][g+y][b+x]==0&&tlit[r+z][g+y][b+x]==0){
+											tlit[r+z][g+y][b+x] = sel;
+											ccount++;
+											System.out.println(ccount+" | "+r+" "+g+" "+b);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			for(int r =0;r<ls;r++){
+				for(int g =0;g<ls;g++){
+					for(int b =0;b<ls;b++){
+						lit[r][g][b] = tlit[r][g][b];
+					}
+				}
+			}
+		}
+	}
 	
 	public void getPools(String path){
 		File folder = new File(path);
 		File[] files = folder.listFiles();
 		cards.clear();
+		full.clear();
 		colors.clear();
 		for(int i=0;i<files.length;i++){
 			try{
 				BufferedImage ti = ImageIO.read(files[i]);
+				//byte[] imageByteArray = files[i].getPath().getBytes();
+				//System.out.println(imageByteArray.length);
+				//InputStream inStream = new ByteArrayInputStream(imageByteArray);
+				//BufferedImage ti = ImageIO.read(inStream);
+				//BufferedImage ti = buffer(Toolkit.getDefaultToolkit().createImage(imageByteArray));
 				cards.add(ti);
+				full.add(ti);
 				colors.add(getAvg(ti));
 				System.out.println("Got "+i+" out of "+files.length);
 			}catch(Exception ex){
@@ -105,72 +197,30 @@ public class RandMtg {
 		}
 		return temp;
 	}
-	//COPYRIGHT 2016 EMMETT GLASER
 	
 	public void foundln(int www, int hhh, int ind, int x, int y){
 		System.out.println("Found! - "+ind+" - "+Math.round(((double)(y*www)+(double)(x%www))/(double)(hhh*www)*100)+"%");
 	}
 	
-	public void resample(BufferedImage s, LinkedList<BufferedImage> pool, LinkedList<Color> cpool, int picw, int pich, double scl, boolean rep){
+	public void scaleall(int pich, int picw){
 		LinkedList<BufferedImage> angel = new LinkedList<BufferedImage>();
-		for(int i=0;i<cards.size();i++){
-			angel.add(scale(cards.get(i),picw,pich));
+		for(int i=0;i<full.size();i++){
+			angel.add(scale(full.get(i),picw,pich));
 		}
 		cards.clear();
 		for(int i=0;i<angel.size();i++){
 			cards.add(angel.get(i));
 		}
-		int ccount  =0;
-		int ls = 27;
-		lit = new int[ls][ls][ls]; //BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
-		double lratio = (double)ls/(double)256;
-		for(int i =0;i<cpool.size();i++){
-			Color cc = cpool.get(i);
-			if(lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)]==0){
-				ccount++;
-			}
-			lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)] = i+1;
-		}
-		int[][][] tlit = new int[ls][ls][ls];
-		while(ccount<ls*ls*ls){
-			for(int r =0;r<ls;r++){
-				for(int g =0;g<ls;g++){
-					for(int b =0;b<ls;b++){
-						tlit[r][g][b] = lit[r][g][b];
-					}
-				}
-			}
-			for(int r =0;r<ls;r++){
-				for(int g =0;g<ls;g++){
-					for(int b =0;b<ls;b++){
-						if(lit[r][g][b] != 0){
-							int sel = lit[r][g][b];
-							for(int z=-1;z<=1;z++){
-								for(int y=-1;y<=1;y++){
-									for(int x=-1;x<=1;x++){
-										if(r+z>-1&&r+z<ls&&g+y>-1&&g+y<ls&&b+x>-1&&b+x<ls&&lit[r+z][g+y][b+x]==0&&tlit[r+z][g+y][b+x]==0){
-											tlit[r+z][g+y][b+x] = sel;
-											ccount++;
-											System.out.println(ccount+" | "+r+" "+g+" "+b);
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			for(int r =0;r<ls;r++){
-				for(int g =0;g<ls;g++){
-					for(int b =0;b<ls;b++){
-						lit[r][g][b] = tlit[r][g][b];
-					}
-				}
-			}
-		}
+	}
+	
+	public void resample(BufferedImage s, LinkedList<BufferedImage> pool, LinkedList<Color> cpool, int picw, int pich, double scl, boolean rep){
+		scaleall(pich,picw);
 		
 		int hhh = (int)((double)s.getHeight()/(double)pich*scl);
 		int www = (int)((double)s.getWidth()/(double)picw*scl);
+		
+		hhh = (int)((double)scl*(double)s.getHeight()/s.getWidth()*(double)picw/pich);
+		www = (int)(scl);
 		
 		BufferedImage sampp = new BufferedImage(www,hhh,BufferedImage.TYPE_INT_RGB);
 		ppp = new BufferedImage[hhh][www];
@@ -180,7 +230,6 @@ public class RandMtg {
 				double wiw = ((double)s.getWidth()/(double)www);
 				double hih = ((double)s.getHeight()/(double)hhh);
 				sampp.setRGB(x, y, getAvg(crop(s,(int)(x*wiw),(int)(y*hih),(int)(x*wiw+wiw),(int)(y*hih+hih))).getRGB());
-				
 				Color tc = new Color(sampp.getRGB(x, y));
 				int vari = lit[(int)(tc.getRed()*lratio)][(int)(tc.getGreen()*lratio)][(int)(tc.getBlue()*lratio)]-1;
 				BufferedImage tb = pool.get(vari);
@@ -191,58 +240,45 @@ public class RandMtg {
 					pool.remove(vari);
 					cpool.remove(vari);
 				}
-				foundln(www, hhh, vari, x, y);
-				/*
-				overloop: while(true){
-					//LinkedList<Integer> vari = new LinkedList<Integer>();
-					int[] vari = {999,0};
-					for(int i=0;i<cpool.size();i++){
-						int ttemp=0;
-						ttemp += Math.abs(cpool.get(i).getRed()-tc.getRed());
-						ttemp += Math.abs(cpool.get(i).getGreen()-tc.getGreen());
-						ttemp += Math.abs(cpool.get(i).getBlue()-tc.getBlue());
-						if(ttemp<vari[0]){
-							vari[0] = ttemp;
-							vari[1] = i;
-						}
-					}
-					if(true){
-						BufferedImage tb = pool.get(vari[1]);
-						ppp[y][x] = tb;
-						Graphics g = desample.createGraphics();
-						g.drawImage(pool.get(vari[1]), x*tb.getWidth(), y*tb.getHeight(), tb.getWidth(), tb.getHeight(), null);
-						if(!rep){
-							pool.remove(vari[1]);
-							cpool.remove(vari[1]);
-						}
-						foundln(www, hhh, vari[1], x, y);
-						break overloop;
-						Integer[] ctemp = {tc.getRGB(), vari[1]};
-					}
-				}*/
+				//foundln(www, hhh, vari, x, y);
 			}
 		}
 		System.out.println("SAMPLED");
-		File f = new File(genHex(5)+".png");
+		File f;
+		int c=0;
+		while(true){
+			f = new File("samp"+c+".png");
+			if(!f.exists()){
+				break;
+			}else{
+				c++;
+			}
+		}
 		try {
 			ImageIO.write(desample, "PNG", f);
 		}catch (IOException ex){}
 		System.out.println("DONE");
 	}
 	
-	public RandMtg(){ ///Y\\\                                                           YYYYYYYASSSSSSSSSSSSS MAA0IN
+	
+	
+	public RandMtg(){ ///Y\\\   YYYYYYYASSSSSSSSSSSSS MAA0IN
+		//make dump folder
+		//File df = new File(System.getProperty("user.dir")+"\\dump");
+		File df = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump");
+		if (!df.exists()){
+			df.mkdir();
+		}
+		//
 		ww = new Window();
 		try{ def = ImageIO.read(getClass().getResource("Image.jpg"));} catch (IOException e) {}
 		//try{ resample = ImageIO.read(getClass().getResource("backk.jpg"));} catch (IOException e) {}
-		try{ resample = ImageIO.read(new File("C:\\Users\\Emmett\\Desktop\\source - texture\\chameleon.jpg"));} catch (IOException e) {
-			e.printStackTrace();
-		}
 		//resample = getImgur();
 		//
-		def = crop(def,18,36,207,173);
+		def = crop(def,18,36,211,173);
 		//
-		boolean pull = false; //TO PULL OR NOT TO PULL
-		times = 1;
+		boolean pull = true; //TO PULL OR NOT TO PULL
+		times = 500;
 		if(pull){
 			for(int i=0;i<times;i++){
 				BufferedImage now;
@@ -260,7 +296,7 @@ public class RandMtg {
 				String id = genHex(5);
 				try {
 					//File f = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump\\"+id+".png");
-					File f = new File(System.getProperty("user.dir")+"\\dump\\"+id+".png");
+					File f = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump\\"+id+".png");
 					//C:\\Users\\Emmett\\workspace\\guessgame
 					ImageIO.write(now, "PNG", f);
 				}catch (IOException ex){
@@ -268,8 +304,8 @@ public class RandMtg {
 				}
 			}
 		}
-		getPools(System.getProperty("user.dir")+"\\dump");
-		resample(resample,cards,colors,30,21,7,true);//RESAMPLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+		setup();
+		ready=true;
 	}
 	
 	public String genHex(int l){
@@ -321,15 +357,27 @@ public class RandMtg {
 	public class Window extends JFrame{
 		
 		double scale = 0.3;
+		JButton sbu;
+		JTextPane inp;
+		JLabel wisl;
+		JTextPane wis;
+		JLabel csil;
+		JTextPane csi;
+		JButton gets;
+		JButton clr;
+		RTest rr;
+		Insets insets;
 		
 		public Window(){
 			setSize(800,480);
-			setLayout(new GridLayout());
+			setPreferredSize(getSize());
+			setLayout(null);
+			
 			addMouseWheelListener(new MouseWheelListener(){
 				public void mouseWheelMoved(MouseWheelEvent e) {
 					scale *= (double)((e.getWheelRotation()*-1)+22)/(double)22;
 				}
-			});
+			});	
 			addWindowListener(new WindowListener(){
 				public void windowActivated(WindowEvent arg0) {
 				}
@@ -347,48 +395,67 @@ public class RandMtg {
 				public void windowOpened(WindowEvent e) {
 				}	
 			});
-			//add(new JScrollPane(new LTest()));
-			add(new JScrollPane(new RTest()));
+			insets = getInsets();
+			rr = new RTest();
+			add(rr);
+			rr.setBounds(0,0,1,1);
+			sbu = new JButton("Loading...");
+			add(sbu);
+			sbu.addActionListener(new ActionListener(){
+				public void actionPerformed(ActionEvent arg0) {
+					try{ resample = ImageIO.read(new File(inp.getText()));} catch (IOException e) {
+						e.printStackTrace();
+					}
+					resample(resample,cards,colors,Integer.parseInt(csi.getText()),(int)(Integer.parseInt(csi.getText())*(double)full.getLast().getHeight()/full.getLast().getWidth()),Integer.parseInt(wis.getText()),true);
+				}
+			});
+			inp = new JTextPane();
+			add(inp);
+			wisl = new JLabel("Cards Across");
+			add(wisl);
+			wis = new JTextPane();
+			wis.setText("100");
+			add(wis);
+			csil = new JLabel("Card width");
+			add(csil);
+			csi = new JTextPane();
+			csi.setText("30");
+			add(csi);
 			setVisible(true);
 		}
 		
 		public class RTest extends JPanel{
-			
-			Canvas canvas;
-			
-			public RTest(){
-				setLayout(new GridLayout());
-				canvas = new Canvas();
-				add(canvas);
-			}
-			
-			public class Canvas extends JPanel{
-				public void paintComponent(Graphics g){
-					Graphics2D g2 = (Graphics2D) g.create();
-					g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-			        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-			        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-					super.paintComponent(g);
-					setBackground(Color.WHITE);
-					try{
-						double w = ppp[0][0].getWidth(this)*scale;
-						double h = ppp[0][0].getHeight(this)*scale;
-						g2.drawImage(resample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale),this);
-						g2.drawImage(desample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale),this);
-						//for(int y=0;y<lit[0].length;y++){
-						//	for(int x=0;x<lit[0][0].length;x++){
-						//		double u = 256/27;
-						//		g2.setColor(new Color(0,(int)(y*u),(int)(x*u)));
-						//		g2.fillRect((int)(x*15), (int)(y*15), (int)Math.ceil(15), (int)Math.ceil(15));
-						//	}
-						//}
-						revalidate();
-						setPreferredSize(new Dimension((int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale)));
-					}catch(Exception ex){}
-					repaint();
+			public void paintComponent(Graphics g){
+				setBackground(Color.GRAY);
+				//
+				insets = getInsets();
+				rr.setBounds(insets.left+200,0,ww.getWidth(),ww.getHeight());
+				sbu.setBounds(insets.left+10,insets.top+10,180,30);
+				sbu.setEnabled(ready);
+				if(ready){
+					sbu.setText("Sample!");
 				}
+				inp.setBounds(insets.left+10,insets.top+50,180,80);
+				wisl.setBounds(insets.left+10,insets.top+140,180,30);
+				wis.setBounds(insets.left+100,insets.top+140,90,30);
+				csil.setBounds(insets.left+10,insets.top+180,180,30);
+				csi.setBounds(insets.left+100,insets.top+180,90,30);
+				//
+				Graphics2D g2 = (Graphics2D) g.create();
+				g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+		        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+		        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+				super.paintComponent(g);
+				setBackground(Color.WHITE);
+				try{
+					g2.drawImage(desample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale),this);
+					revalidate();
+					setPreferredSize(new Dimension((int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale)));
+				}catch(Exception ex){}
+				repaint();
 			}
 		}
+	
 	}
 
 	public static void main(String[] args){
