@@ -45,7 +45,6 @@ public class RandMtg {
 	LinkedList<BufferedImage> cards = new LinkedList<BufferedImage>();
 	LinkedList<BufferedImage> full = new LinkedList<BufferedImage>();
 	LinkedList<Color> colors = new LinkedList<Color>();
-	int times = 500;
 	BufferedImage def;
 	BufferedImage resample;
 	BufferedImage desample;
@@ -53,6 +52,10 @@ public class RandMtg {
 	int[][][] lit;
 	double lratio;
 	boolean ready = false;
+	int fcheck = 0;
+	//String uni = getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump";
+	//String uni = getClass().getProtectionDomain().getCodeSource().getLocation().getPath() +"\\"+ getClass().getPackage().getName() + "\\dump";
+	String uni = System.getProperty("user.home") + "/Desktop/dump";
 	
 	public BufferedImage buffer(Image i){
 		BufferedImage b = new BufferedImage(i.getWidth(null),i.getHeight(null),BufferedImage.TYPE_INT_RGB);
@@ -62,8 +65,12 @@ public class RandMtg {
 	}
 	
 	public void setup(){
-		getPools(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump"); //remmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+		ready=false;
+		getPools(uni); //remmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
 		getLit(colors);
+		if(fcheck>0){
+			ready=true;
+		}
 	}
 	
 	public void getLit(LinkedList<Color> cpool){
@@ -118,12 +125,15 @@ public class RandMtg {
 	}
 	
 	public void getPools(String path){
+		System.out.println("Getting");
 		File folder = new File(path);
 		File[] files = folder.listFiles();
 		cards.clear();
 		full.clear();
 		colors.clear();
-		for(int i=0;i<files.length;i++){
+		fcheck = files.length;
+		System.out.println(fcheck);
+		for(int i=0;i<fcheck;i++){
 			try{
 				BufferedImage ti = ImageIO.read(files[i]);
 				//byte[] imageByteArray = files[i].getPath().getBytes();
@@ -134,7 +144,7 @@ public class RandMtg {
 				cards.add(ti);
 				full.add(ti);
 				colors.add(getAvg(ti));
-				System.out.println("Got "+i+" out of "+files.length);
+				System.out.println("Got "+i+" out of "+fcheck);
 			}catch(Exception ex){
 				ex.printStackTrace();
 			}
@@ -247,7 +257,7 @@ public class RandMtg {
 		File f;
 		int c=0;
 		while(true){
-			f = new File("samp"+c+".png");
+			f = new File(System.getProperty("user.home") + "/Desktop/sampled/" + "samp"+c+".png");
 			if(!f.exists()){
 				break;
 			}else{
@@ -260,52 +270,54 @@ public class RandMtg {
 		System.out.println("DONE");
 	}
 	
-	
-	
-	public RandMtg(){ ///Y\\\   YYYYYYYASSSSSSSSSSSSS MAA0IN
-		//make dump folder
-		//File df = new File(System.getProperty("user.dir")+"\\dump");
-		File df = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump");
-		if (!df.exists()){
-			df.mkdir();
-		}
-		//
-		ww = new Window();
-		try{ def = ImageIO.read(getClass().getResource("Image.jpg"));} catch (IOException e) {}
-		//try{ resample = ImageIO.read(getClass().getResource("backk.jpg"));} catch (IOException e) {}
-		//resample = getImgur();
-		//
-		def = crop(def,18,36,211,173);
-		//
-		boolean pull = true; //TO PULL OR NOT TO PULL
-		times = 500;
-		if(pull){
-			for(int i=0;i<times;i++){
-				BufferedImage now;
-				while(true){
-					now = getCard((int)(Math.random()*420617+1));
-					if(!same(now, def)){
-						getAvg(now);
-						break;
-					}
+	public void pull(int times){
+		ready = false;
+		for(int i=0;i<times;i++){
+			BufferedImage now;
+			while(true){
+				now = getCard((int)(Math.random()*420617+1));
+				if(!same(now, def)){
+					getAvg(now);
+					break;
 				}
-				//now = samp(now,2);
-				cards.add(now);
-				colors.add(getAvg(now));
-				System.out.println("got "+(i+1)+" out of "+times);
-				String id = genHex(5);
-				try {
-					//File f = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump\\"+id+".png");
-					File f = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump\\"+id+".png");
-					//C:\\Users\\Emmett\\workspace\\guessgame
-					ImageIO.write(now, "PNG", f);
-				}catch (IOException ex){
-					ex.printStackTrace();
-				}
+			}
+			cards.add(now);
+			colors.add(getAvg(now));
+			System.out.println("got "+(i+1)+" out of "+times);
+			String id = genHex(5);
+			try {
+				File f = new File(uni + "\\" + id + ".png");
+				ImageIO.write(now, "PNG", f);
+			}catch (IOException ex){
+				ex.printStackTrace();
 			}
 		}
 		setup();
-		ready=true;
+	}
+	
+	public void clear(){
+		ready = false;
+		File f = new File(uni);
+		File[] clist = f.listFiles();
+		for(int i=0;i<clist.length;i++){
+			System.out.println("Deleted "+clist[i].getName()+"!");
+			clist[i].delete();
+		}
+	}
+	
+	public RandMtg(){
+		File df = new File(uni);
+		if (!df.exists()){
+			df.mkdir();
+		}
+		df = new File(System.getProperty("user.home") + "/Desktop/sampled"); //YASS MAOIN
+		if (!df.exists()){
+			df.mkdir();
+		}
+		ww = new Window();
+		try{ def = ImageIO.read(getClass().getResource("Image.jpg"));} catch (IOException e) {}
+		def = crop(def,18,36,211,173);
+		setup();
 	}
 	
 	public String genHex(int l){
@@ -344,6 +356,7 @@ public class RandMtg {
 		return r;
 	}
 	
+	//FOR TESTING PURPOSES ONLY
 	public BufferedImage samp(BufferedImage b, int d){
 		BufferedImage samp = new BufferedImage(b.getWidth(),b.getHeight(),BufferedImage.TYPE_INT_ARGB);
 		for(int y=0;y<b.getHeight();y+=d){
@@ -364,11 +377,16 @@ public class RandMtg {
 		JLabel csil;
 		JTextPane csi;
 		JButton gets;
-		JButton clr;
 		RTest rr;
+		JLabel pnl;
+		JTextPane pn;
+		JButton pb;
+		JButton clr;
+		JLabel pch;
 		Insets insets;
 		
 		public Window(){
+			setTitle("MTG Resample");
 			setSize(800,480);
 			setPreferredSize(getSize());
 			setLayout(null);
@@ -421,6 +439,27 @@ public class RandMtg {
 			csi = new JTextPane();
 			csi.setText("30");
 			add(csi);
+			pnl = new JLabel("Pull amount");
+			add(pnl);
+			pn = new JTextPane();
+			pn.setText("100");
+			add(pn);
+			pb = new JButton("Pull");
+			pb.addActionListener(new ActionListener(){
+				public void actionPerformed(ActionEvent arg0) {
+					pull(Integer.parseInt(pn.getText()));
+				}
+			});
+			add(pb);
+			clr = new JButton("Clear");
+			clr.addActionListener(new ActionListener(){
+				public void actionPerformed(ActionEvent arg0) {
+					clear();
+				}
+			});
+			add(clr);
+			pch = new JLabel("Pool size:");
+			add(pch);
 			setVisible(true);
 		}
 		
@@ -440,6 +479,12 @@ public class RandMtg {
 				wis.setBounds(insets.left+100,insets.top+140,90,30);
 				csil.setBounds(insets.left+10,insets.top+180,180,30);
 				csi.setBounds(insets.left+100,insets.top+180,90,30);
+				pnl.setBounds(insets.left+10,insets.top+220,90,30);
+				pn.setBounds(insets.left+100,insets.top+220,90,30);
+				pb.setBounds(insets.left+10,insets.top+260,180,30);
+				clr.setBounds(insets.left+10,insets.top+300,180,30);
+				pch.setBounds(insets.left+10,insets.top+340,180,30);
+				pch.setText("Pool size: "+fcheck);
 				//
 				Graphics2D g2 = (Graphics2D) g.create();
 				g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
