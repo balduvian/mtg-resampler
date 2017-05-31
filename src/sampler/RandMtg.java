@@ -1,50 +1,50 @@
 package sampler;
 
+import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.Insets;
-import java.awt.LayoutManager;
-import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.awt.font.LayoutPath;
+import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.DataInput;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.util.LinkedList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
-import javax.swing.border.Border;
-import javax.swing.border.LineBorder;
 
 public class RandMtg {
 	
 	Window ww;
-	LinkedList<BufferedImage> cards = new LinkedList<BufferedImage>();
-	LinkedList<BufferedImage> full = new LinkedList<BufferedImage>();
-	LinkedList<Color> colors = new LinkedList<Color>();
+	
+	int poolsize;
+	
+	int cindex;
+	BufferedImage[] cards;
+	
+	int findex;
+	BufferedImage[] full;
+	
+	int oindex;
+	Color[] colors;
+	
 	BufferedImage def;
 	BufferedImage resample;
 	BufferedImage desample;
@@ -52,9 +52,9 @@ public class RandMtg {
 	int[][][] lit;
 	double lratio;
 	boolean ready = false;
-	int fcheck = 0;
-	//String uni = getClass().getProtectionDomain().getCodeSource().getLocation().getPath()+"\\dump";
-	//String uni = getClass().getProtectionDomain().getCodeSource().getLocation().getPath() +"\\"+ getClass().getPackage().getName() + "\\dump";
+	
+	ExecutorService exe;
+	
 	String uni = System.getProperty("user.home") + "/Desktop/dump";
 	
 	public BufferedImage buffer(Image i){
@@ -66,20 +66,18 @@ public class RandMtg {
 	
 	public void setup(){
 		ready=false;
-		getPools(uni); //remmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
-		getLit(colors);
-		if(fcheck>0){
-			ready=true;
-		}
+		getPools();
+		getLit();
+		ready=true;
 	}
 	
-	public void getLit(LinkedList<Color> cpool){
+	public void getLit(){
 		int ccount  =0;
 		int ls = 27;
 		lit = new int[ls][ls][ls]; 
 		lratio = (double)ls/(double)256;
-		for(int i =0;i<cpool.size();i++){
-			Color cc = cpool.get(i);
+		for(int i =0;i<poolsize;i++){
+			Color cc = colors[i];
 			if(lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)]==0){
 				ccount++;
 			}
@@ -105,7 +103,7 @@ public class RandMtg {
 										if(r+z>-1&&r+z<ls&&g+y>-1&&g+y<ls&&b+x>-1&&b+x<ls&&lit[r+z][g+y][b+x]==0&&tlit[r+z][g+y][b+x]==0){
 											tlit[r+z][g+y][b+x] = sel;
 											ccount++;
-											System.out.println(ccount+" | "+r+" "+g+" "+b);
+											//System.out.println(ccount+" | "+r+" "+g+" "+b);
 										}
 									}
 								}
@@ -124,27 +122,33 @@ public class RandMtg {
 		}
 	}
 	
-	public void getPools(String path){
-		System.out.println("Getting");
-		File folder = new File(path);
+	public void addtocolors(Color c){
+		colors[oindex] = c;
+		oindex++;
+	}
+	public void addtocards(BufferedImage b){
+		cards[cindex] = b;
+		cindex++;
+	}
+	public void addtofull(BufferedImage b){
+		full[findex] =b;
+		findex++;
+	}
+	
+	public void getPools(){
+		File folder = new File(uni);
 		File[] files = folder.listFiles();
-		cards.clear();
-		full.clear();
-		colors.clear();
-		fcheck = files.length;
-		System.out.println(fcheck);
-		for(int i=0;i<fcheck;i++){
+		poolsize = files.length;
+		cards = new BufferedImage[poolsize];
+		full = new BufferedImage[poolsize];
+		colors = new Color[poolsize];
+		for(int i=0;i<poolsize;i++){
 			try{
 				BufferedImage ti = ImageIO.read(files[i]);
-				//byte[] imageByteArray = files[i].getPath().getBytes();
-				//System.out.println(imageByteArray.length);
-				//InputStream inStream = new ByteArrayInputStream(imageByteArray);
-				//BufferedImage ti = ImageIO.read(inStream);
-				//BufferedImage ti = buffer(Toolkit.getDefaultToolkit().createImage(imageByteArray));
-				cards.add(ti);
-				full.add(ti);
-				colors.add(getAvg(ti));
-				System.out.println("Got "+i+" out of "+fcheck);
+				addtocards(ti);
+				addtofull(ti);
+				addtocolors(getAvg(ti));
+				System.out.println("Got "+(i+1)+" out of "+poolsize);
 			}catch(Exception ex){
 				ex.printStackTrace();
 			}
@@ -213,17 +217,15 @@ public class RandMtg {
 	}
 	
 	public void scaleall(int pich, int picw){
-		LinkedList<BufferedImage> angel = new LinkedList<BufferedImage>();
-		for(int i=0;i<full.size();i++){
-			angel.add(scale(full.get(i),picw,pich));
+		BufferedImage[] angel = new BufferedImage[poolsize];
+		for(int i=0;i<poolsize;i++){
+			angel[i] = scale(full[i],picw,pich);
 		}
-		cards.clear();
-		for(int i=0;i<angel.size();i++){
-			cards.add(angel.get(i));
-		}
+		cards = angel.clone();
+		cindex = 0;
 	}
 	
-	public void resample(BufferedImage s, LinkedList<BufferedImage> pool, LinkedList<Color> cpool, int picw, int pich, double scl, boolean rep){
+	public void resample(BufferedImage s, int picw, int pich, double scl, boolean rep){
 		scaleall(pich,picw);
 		
 		int hhh = (int)((double)s.getHeight()/(double)pich*scl);
@@ -242,14 +244,14 @@ public class RandMtg {
 				sampp.setRGB(x, y, getAvg(crop(s,(int)(x*wiw),(int)(y*hih),(int)(x*wiw+wiw),(int)(y*hih+hih))).getRGB());
 				Color tc = new Color(sampp.getRGB(x, y));
 				int vari = lit[(int)(tc.getRed()*lratio)][(int)(tc.getGreen()*lratio)][(int)(tc.getBlue()*lratio)]-1;
-				BufferedImage tb = pool.get(vari);
+				BufferedImage tb = cards[vari];
 				ppp[y][x] = tb;
 				Graphics g = desample.createGraphics();
-				g.drawImage(pool.get(vari), x*tb.getWidth(), y*tb.getHeight(), tb.getWidth(), tb.getHeight(), null);
-				if(!rep){
-					pool.remove(vari);
-					cpool.remove(vari);
-				}
+				g.drawImage(cards[vari], x*tb.getWidth(), y*tb.getHeight(), tb.getWidth(), tb.getHeight(), null);
+				//if(!rep){   REP HAS BEEN RIPPED
+				//	pool.remove(vari);
+				//	cpool.remove(vari);
+				//}
 				//foundln(www, hhh, vari, x, y);
 			}
 		}
@@ -281,8 +283,8 @@ public class RandMtg {
 					break;
 				}
 			}
-			cards.add(now);
-			colors.add(getAvg(now));
+			//addtocards(now);
+			//addtocolors(getAvg(now));
 			System.out.println("got "+(i+1)+" out of "+times);
 			String id = genHex(5);
 			try {
@@ -377,7 +379,8 @@ public class RandMtg {
 		JLabel csil;
 		JTextPane csi;
 		JButton gets;
-		RTest rr;
+		Canvas rr;
+		BufferStrategy b;
 		JLabel pnl;
 		JTextPane pn;
 		JButton pb;
@@ -386,6 +389,7 @@ public class RandMtg {
 		Insets insets;
 		
 		public Window(){
+			exe = Executors.newFixedThreadPool(1);
 			setTitle("MTG Resample");
 			setSize(800,480);
 			setPreferredSize(getSize());
@@ -414,8 +418,10 @@ public class RandMtg {
 				}	
 			});
 			insets = getInsets();
-			rr = new RTest();
+			rr = new Canvas();
 			add(rr);
+			rr.createBufferStrategy(2);
+			b = rr.getBufferStrategy();
 			rr.setBounds(0,0,1,1);
 			sbu = new JButton("Loading...");
 			add(sbu);
@@ -424,7 +430,7 @@ public class RandMtg {
 					try{ resample = ImageIO.read(new File(inp.getText()));} catch (IOException e) {
 						e.printStackTrace();
 					}
-					resample(resample,cards,colors,Integer.parseInt(csi.getText()),(int)(Integer.parseInt(csi.getText())*(double)full.getLast().getHeight()/full.getLast().getWidth()),Integer.parseInt(wis.getText()),true);
+					resample(resample,Integer.parseInt(csi.getText()),(int)(Integer.parseInt(csi.getText())*(double)full[0].getHeight()/full[0].getWidth()),Integer.parseInt(wis.getText()),true);
 				}
 			});
 			inp = new JTextPane();
@@ -461,46 +467,47 @@ public class RandMtg {
 			pch = new JLabel("Pool size:");
 			add(pch);
 			setVisible(true);
+			exe.execute(new PaintLoop());
 		}
 		
-		public class RTest extends JPanel{
-			public void paintComponent(Graphics g){
-				setBackground(Color.GRAY);
-				//
-				insets = getInsets();
-				rr.setBounds(insets.left+200,0,ww.getWidth(),ww.getHeight());
-				sbu.setBounds(insets.left+10,insets.top+10,180,30);
-				sbu.setEnabled(ready);
-				if(ready){
-					sbu.setText("Sample!");
+		public class PaintLoop implements Runnable{
+			public void run() {
+				while(true){
+					Graphics g = b.getDrawGraphics();
+					insets = getInsets();
+					rr.setBounds(insets.left+200,0,ww.getWidth(),ww.getHeight());
+					sbu.setBounds(insets.left+10,insets.top+10,180,30);
+					sbu.setEnabled(ready);
+					if(ready){
+						sbu.setText("Sample!");
+					}else{
+						sbu.setText("Not Ready!");
+					}
+					inp.setBounds(insets.left+10,insets.top+50,180,80);
+					wisl.setBounds(insets.left+10,insets.top+140,180,30);
+					wis.setBounds(insets.left+100,insets.top+140,90,30);
+					csil.setBounds(insets.left+10,insets.top+180,180,30);
+					csi.setBounds(insets.left+100,insets.top+180,90,30);
+					pnl.setBounds(insets.left+10,insets.top+220,90,30);
+					pn.setBounds(insets.left+100,insets.top+220,90,30);
+					pb.setBounds(insets.left+10,insets.top+260,180,30);
+					clr.setBounds(insets.left+10,insets.top+300,180,30);
+					pch.setBounds(insets.left+10,insets.top+340,180,30);
+					pch.setText("Pool size: "+poolsize);
+					//
+					Graphics2D g2 = (Graphics2D)g.create();
+					g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+			        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+			        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+					setBackground(Color.WHITE);
+					try{
+						g2.drawImage(desample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale),null);
+						revalidate();
+						setPreferredSize(new Dimension((int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale)));
+					}catch(Exception ex){}
 				}
-				inp.setBounds(insets.left+10,insets.top+50,180,80);
-				wisl.setBounds(insets.left+10,insets.top+140,180,30);
-				wis.setBounds(insets.left+100,insets.top+140,90,30);
-				csil.setBounds(insets.left+10,insets.top+180,180,30);
-				csi.setBounds(insets.left+100,insets.top+180,90,30);
-				pnl.setBounds(insets.left+10,insets.top+220,90,30);
-				pn.setBounds(insets.left+100,insets.top+220,90,30);
-				pb.setBounds(insets.left+10,insets.top+260,180,30);
-				clr.setBounds(insets.left+10,insets.top+300,180,30);
-				pch.setBounds(insets.left+10,insets.top+340,180,30);
-				pch.setText("Pool size: "+fcheck);
-				//
-				Graphics2D g2 = (Graphics2D) g.create();
-				g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-		        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-		        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-				super.paintComponent(g);
-				setBackground(Color.WHITE);
-				try{
-					g2.drawImage(desample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale),this);
-					revalidate();
-					setPreferredSize(new Dimension((int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale)));
-				}catch(Exception ex){}
-				repaint();
-			}
+			}	
 		}
-	
 	}
 
 	public static void main(String[] args){
