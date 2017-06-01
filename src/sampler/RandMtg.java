@@ -1,6 +1,5 @@
 package sampler;
 
-import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -27,10 +26,17 @@ import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 
 public class RandMtg {
+	
+	//19,37,207,173
+	
+	public static final int CROPX1 = 19;
+	public static final int CROPY1 = 37;
+	public static final int CROPX2 = 206;
+	public static final int CROPY2 = 173;
 	
 	Window ww;
 	
@@ -51,7 +57,6 @@ public class RandMtg {
 	BufferedImage[][] ppp;
 	int[][][] lit;
 	double lratio;
-	boolean ready = false;
 	
 	ExecutorService exe;
 	
@@ -65,17 +70,19 @@ public class RandMtg {
 	}
 	
 	public void setup(){
-		ready=false;
+		cindex = 0;
+		oindex = 0;
+		findex = 0;
 		getPools();
 		getLit();
-		ready=true;
+		ww.ready = true;
 	}
 	
 	public void getLit(){
 		int ccount  =0;
 		int ls = 27;
 		lit = new int[ls][ls][ls]; 
-		lratio = (double)ls/(double)256;
+		lratio = ls/256.0;
 		for(int i =0;i<poolsize;i++){
 			Color cc = colors[i];
 			if(lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)]==0){
@@ -167,6 +174,19 @@ public class RandMtg {
 			}
 		}
 		return nn;
+	}	
+	public BufferedImage crop(BufferedImage b){
+		BufferedImage nn = new BufferedImage(CROPX2-CROPX1,CROPY2-CROPY1,BufferedImage.TYPE_INT_ARGB);
+		for(int y=CROPY1;y<CROPY2;y++){
+			for(int x=CROPX1;x<CROPX2;x++){
+				try{
+					nn.setRGB(x-CROPX1, y-CROPY1, b.getRGB(x,y));
+				}catch(Exception ex){
+					nn.setRGB(x-CROPX1, y-CROPY1, 54645);
+				}
+			}
+		}
+		return nn;
 	}
 	
 	public Color getAvg(BufferedImage b){
@@ -237,6 +257,7 @@ public class RandMtg {
 		BufferedImage sampp = new BufferedImage(www,hhh,BufferedImage.TYPE_INT_RGB);
 		ppp = new BufferedImage[hhh][www];
 		desample = new BufferedImage(www*picw,hhh*pich,BufferedImage.TYPE_INT_ARGB);
+		Graphics g = desample.createGraphics();
 		for(int y=0;y<hhh;y++){
 			for(int x=0;x<www;x++){
 				double wiw = ((double)s.getWidth()/(double)www);
@@ -246,7 +267,6 @@ public class RandMtg {
 				int vari = lit[(int)(tc.getRed()*lratio)][(int)(tc.getGreen()*lratio)][(int)(tc.getBlue()*lratio)]-1;
 				BufferedImage tb = cards[vari];
 				ppp[y][x] = tb;
-				Graphics g = desample.createGraphics();
 				g.drawImage(cards[vari], x*tb.getWidth(), y*tb.getHeight(), tb.getWidth(), tb.getHeight(), null);
 				//if(!rep){   REP HAS BEEN RIPPED
 				//	pool.remove(vari);
@@ -272,33 +292,24 @@ public class RandMtg {
 		System.out.println("DONE");
 	}
 	
-	public void pull(int times){
-		ready = false;
-		for(int i=0;i<times;i++){
-			BufferedImage now;
-			while(true){
-				now = getCard((int)(Math.random()*420617+1));
-				if(!same(now, def)){
-					getAvg(now);
-					break;
-				}
-			}
-			//addtocards(now);
-			//addtocolors(getAvg(now));
-			System.out.println("got "+(i+1)+" out of "+times);
-			String id = genHex(5);
+	public boolean pull(){
+		BufferedImage now;
+		int numpass = (int)(Math.random()*420617+1);
+		now = getCard(numpass);
+		if(same(now, def)){
+			return false;
+		}else{
+			File f = new File(uni + "\\" + numpass + ".png");
 			try {
-				File f = new File(uni + "\\" + id + ".png");
 				ImageIO.write(now, "PNG", f);
-			}catch (IOException ex){
+			} catch (IOException ex){
 				ex.printStackTrace();
 			}
+			return true;
 		}
-		setup();
 	}
 	
 	public void clear(){
-		ready = false;
 		File f = new File(uni);
 		File[] clist = f.listFiles();
 		for(int i=0;i<clist.length;i++){
@@ -318,7 +329,7 @@ public class RandMtg {
 		}
 		ww = new Window();
 		try{ def = ImageIO.read(getClass().getResource("Image.jpg"));} catch (IOException e) {}
-		def = crop(def,18,36,211,173);
+		def = crop(def);
 		setup();
 	}
 	
@@ -337,7 +348,7 @@ public class RandMtg {
 			image = ImageIO.read(new URL("http://gatherer.wizards.com/Handlers/Image.ashx?multiverseid="+index+"&type=card"));
 		}catch(Exception ex){}
 		try{
-			image = crop(image,18,36,207,173);
+			image = crop(image);
 		}catch(Exception ex){
 			ex.printStackTrace();
 		}
@@ -370,16 +381,19 @@ public class RandMtg {
 	}
 	
 	public class Window extends JFrame{
+		private static final long serialVersionUID = -44669440408101826L;
+		
+		boolean pulling;
+		boolean ready;
 		
 		double scale = 0.3;
 		JButton sbu;
-		JTextPane inp;
+		JTextArea inp;
 		JLabel wisl;
 		JTextPane wis;
 		JLabel csil;
 		JTextPane csi;
 		JButton gets;
-		Canvas rr;
 		BufferStrategy b;
 		JLabel pnl;
 		JTextPane pn;
@@ -389,11 +403,11 @@ public class RandMtg {
 		Insets insets;
 		
 		public Window(){
-			exe = Executors.newFixedThreadPool(1);
+			exe = Executors.newFixedThreadPool(3);
 			setTitle("MTG Resample");
 			setSize(800,480);
+			setVisible(true);
 			setPreferredSize(getSize());
-			setLayout(null);
 			
 			addMouseWheelListener(new MouseWheelListener(){
 				public void mouseWheelMoved(MouseWheelEvent e) {
@@ -418,12 +432,9 @@ public class RandMtg {
 				}	
 			});
 			insets = getInsets();
-			rr = new Canvas();
-			add(rr);
-			rr.createBufferStrategy(2);
-			b = rr.getBufferStrategy();
-			rr.setBounds(0,0,1,1);
-			sbu = new JButton("Loading...");
+			createBufferStrategy(2);
+			b = getBufferStrategy();
+			sbu = new JButton();
 			add(sbu);
 			sbu.addActionListener(new ActionListener(){
 				public void actionPerformed(ActionEvent arg0) {
@@ -433,7 +444,10 @@ public class RandMtg {
 					resample(resample,Integer.parseInt(csi.getText()),(int)(Integer.parseInt(csi.getText())*(double)full[0].getHeight()/full[0].getWidth()),Integer.parseInt(wis.getText()),true);
 				}
 			});
-			inp = new JTextPane();
+			inp = new JTextArea();
+			inp.setEditable(true);
+			inp.setLineWrap(true);
+			inp.setAutoscrolls(true);
 			add(inp);
 			wisl = new JLabel("Cards Across");
 			add(wisl);
@@ -453,7 +467,7 @@ public class RandMtg {
 			pb = new JButton("Pull");
 			pb.addActionListener(new ActionListener(){
 				public void actionPerformed(ActionEvent arg0) {
-					pull(Integer.parseInt(pn.getText()));
+					exe.execute(new PullLoop());
 				}
 			});
 			add(pb);
@@ -466,8 +480,27 @@ public class RandMtg {
 			add(clr);
 			pch = new JLabel("Pool size:");
 			add(pch);
-			setVisible(true);
 			exe.execute(new PaintLoop());
+		}
+		
+		public class PullLoop implements Runnable{
+			public void run(){
+				pulling = true;
+				ready = false;
+				int times = Integer.parseInt(pn.getText());
+				for(int i=0;i<times;i++){
+					boolean p = pull();
+					if(p){
+						System.out.println("Loaded "+i+" out of "+poolsize);
+					}else{
+						System.out.println("Failed to load at "+i);
+						i--;
+					}
+				}
+				setup();
+				pulling = false;
+				ready = true;
+			}
 		}
 		
 		public class PaintLoop implements Runnable{
@@ -475,7 +508,7 @@ public class RandMtg {
 				while(true){
 					Graphics g = b.getDrawGraphics();
 					insets = getInsets();
-					rr.setBounds(insets.left+200,0,ww.getWidth(),ww.getHeight());
+					//rr.setBounds(insets.left+200,0,ww.getWidth(),ww.getHeight());
 					sbu.setBounds(insets.left+10,insets.top+10,180,30);
 					sbu.setEnabled(ready);
 					if(ready){
@@ -491,6 +524,7 @@ public class RandMtg {
 					pnl.setBounds(insets.left+10,insets.top+220,90,30);
 					pn.setBounds(insets.left+100,insets.top+220,90,30);
 					pb.setBounds(insets.left+10,insets.top+260,180,30);
+					pb.setEnabled(!pulling);
 					clr.setBounds(insets.left+10,insets.top+300,180,30);
 					pch.setBounds(insets.left+10,insets.top+340,180,30);
 					pch.setText("Pool size: "+poolsize);
