@@ -21,15 +21,15 @@ import java.net.URL;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import javax.imageio.ImageIO;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 
-public class RandMtg {
+public class MTG {
 	
 	//19,37,207,173
 	
@@ -38,29 +38,41 @@ public class RandMtg {
 	public static final int CROPX2 = 206;
 	public static final int CROPY2 = 173;
 	
-	Window ww;
+	MtgWindow ww;
 	
-	int poolsize;
+	public static final int NOACTIVITY = 0;
+	public static final int PULLACTIVITY = 1;
+	public static final int SETUPACTIVITY = 1;
+	public static final int SAMPLEACTIVITY = 2;
+	public int activity;
 	
-	int cindex;
-	BufferedImage[] cards;
+	static int newcardwidth;
+	static double newscale;
 	
-	int findex;
-	BufferedImage[] full;
+	private int basecardheight;
+	private int basecardwidth;
 	
-	int oindex;
-	Color[] colors;
+	static int poolsize;
 	
-	BufferedImage def;
-	BufferedImage resample;
-	BufferedImage desample;
-	BufferedImage[][] ppp;
+	private int cindex;
+	static BufferedImage[] cards;
+	
+	private int findex;
+	static BufferedImage[] full;
+	
+	static int oindex;
+	static Color[] colors;
+	
+	static BufferedImage def;
+	static BufferedImage resample;
+	static BufferedImage desample;
+	static BufferedImage[][] ppp;
 	int[][][] lit;
 	double lratio;
 	
-	ExecutorService exe;
+	private ExecutorService exe;
 	
-	String uni = System.getProperty("user.home") + "/Desktop/dump";
+	private String uni = System.getProperty("user.home") + "/Desktop/dump";
 	
 	public BufferedImage buffer(Image i){
 		BufferedImage b = new BufferedImage(i.getWidth(null),i.getHeight(null),BufferedImage.TYPE_INT_RGB);
@@ -212,26 +224,6 @@ public class RandMtg {
 		return bb;
 	}
 	
-	public BufferedImage getImgur(){
-		BufferedImage fff = null;
-		try{ fff = ImageIO.read(getClass().getResource("removed.png"));} catch (IOException e) {}
-		BufferedImage temp = null;
-		String hchars = "0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
-		while(true){
-			String f4 = "";
-			for(int i=0;i<(int)(Math.random()*(7-4+1)+4);i++){
-				f4 += hchars.charAt((int)(Math.random()*hchars.length()));
-			}
-			try{
-				temp = ImageIO.read(new URL("http://i.imgur.com/"+f4+".jpg"));
-				if(!same(temp,fff) && temp != null){
-					break;
-				}
-			}catch(Exception ex){}
-		}
-		return temp;
-	}
-	
 	public void foundln(int www, int hhh, int ind, int x, int y){
 		System.out.println("Found! - "+ind+" - "+Math.round(((double)(y*www)+(double)(x%www))/(double)(hhh*www)*100)+"%");
 	}
@@ -245,11 +237,16 @@ public class RandMtg {
 		cindex = 0;
 	}
 	
-	public void resample(BufferedImage s, int picw, int pich, double scl, boolean rep){
-		scaleall(pich,picw);
+	//resample(resample,Integer.parseInt(csi.getText()),(int)(Integer.parseInt(csi.getText())*(double)full[0].getHeight()/full[0].getWidth()),Integer.parseInt(wis.getText()));
+	public void supersample(){
+		resample(resample);
+	}
+	
+	public void resample(BufferedImage s, int across, double scl){
+		scaleall((int)(basecardheight*scl),(int)(basecardwidth*scl));
 		
-		int hhh = (int)((double)s.getHeight()/(double)pich*scl);
-		int www = (int)((double)s.getWidth()/(double)picw*scl);
+		int hhh = (int)((double)s.getHeight()/(double)basecardheight*scl);
+		int www = (int)((double)s.getWidth()/(double)basecardwidth*scl);
 		
 		hhh = (int)((double)scl*(double)s.getHeight()/s.getWidth()*(double)picw/pich);
 		www = (int)(scl);
@@ -318,7 +315,7 @@ public class RandMtg {
 		}
 	}
 	
-	public RandMtg(){
+	public MTG(){
 		File df = new File(uni);
 		if (!df.exists()){
 			df.mkdir();
@@ -327,10 +324,41 @@ public class RandMtg {
 		if (!df.exists()){
 			df.mkdir();
 		}
-		ww = new Window();
+		ww = new MtgWindow();
 		try{ def = ImageIO.read(getClass().getResource("Image.jpg"));} catch (IOException e) {}
 		def = crop(def);
 		setup();
+		
+		exe = Executors.newFixedThreadPool(2);
+		exe.execute(new GameLoop());
+		exe.execute(new PaintLoop());
+	}
+	
+	public class GameLoop implements Runnable{
+		public void run(){
+			while(true){
+				if(activity==NOACTIVITY){
+					
+				}else if(activity==SETUPACTIVITY){
+					setup();
+					activity = NOACTIVITY;
+				}else if(activity==PULLACTIVITY){
+					superpull();
+					activity = NOACTIVITY;
+				}else if(activity==SAMPLEACTIVITY){
+					resample();
+					activity = NOACTIVITY;
+				}
+			}
+		}
+	}
+	
+	public class PaintLoop implements Runnable{
+		public void run(){
+			while(true){
+				ww.gopaint();
+			}
+		}
 	}
 	
 	public String genHex(int l){
@@ -379,172 +407,8 @@ public class RandMtg {
 		}
 		return samp;
 	}
-	
-	public class Window extends JFrame{
-		private static final long serialVersionUID = -44669440408101826L;
-		
-		boolean pulling;
-		boolean ready;
-		
-		double scale = 0.3;
-		JButton sbu;
-		JTextArea inp;
-		JLabel wisl;
-		JTextPane wis;
-		JLabel csil;
-		JTextPane csi;
-		JButton gets;
-		BufferStrategy b;
-		JLabel pnl;
-		JTextPane pn;
-		JButton pb;
-		JButton clr;
-		JLabel pch;
-		Insets insets;
-		
-		public Window(){
-			exe = Executors.newFixedThreadPool(3);
-			setTitle("MTG Resample");
-			setSize(800,480);
-			setVisible(true);
-			setPreferredSize(getSize());
-			
-			addMouseWheelListener(new MouseWheelListener(){
-				public void mouseWheelMoved(MouseWheelEvent e) {
-					scale *= (double)((e.getWheelRotation()*-1)+22)/(double)22;
-				}
-			});	
-			addWindowListener(new WindowListener(){
-				public void windowActivated(WindowEvent arg0) {
-				}
-				public void windowClosed(WindowEvent e) {
-				}
-				public void windowClosing(WindowEvent e) {
-					System.exit(0);
-				}
-				public void windowDeactivated(WindowEvent e) {
-				}
-				public void windowDeiconified(WindowEvent e) {
-				}
-				public void windowIconified(WindowEvent e) {
-				}
-				public void windowOpened(WindowEvent e) {
-				}	
-			});
-			insets = getInsets();
-			createBufferStrategy(2);
-			b = getBufferStrategy();
-			sbu = new JButton();
-			add(sbu);
-			sbu.addActionListener(new ActionListener(){
-				public void actionPerformed(ActionEvent arg0) {
-					try{ resample = ImageIO.read(new File(inp.getText()));} catch (IOException e) {
-						e.printStackTrace();
-					}
-					resample(resample,Integer.parseInt(csi.getText()),(int)(Integer.parseInt(csi.getText())*(double)full[0].getHeight()/full[0].getWidth()),Integer.parseInt(wis.getText()),true);
-				}
-			});
-			inp = new JTextArea();
-			inp.setEditable(true);
-			inp.setLineWrap(true);
-			inp.setAutoscrolls(true);
-			add(inp);
-			wisl = new JLabel("Cards Across");
-			add(wisl);
-			wis = new JTextPane();
-			wis.setText("100");
-			add(wis);
-			csil = new JLabel("Card width");
-			add(csil);
-			csi = new JTextPane();
-			csi.setText("30");
-			add(csi);
-			pnl = new JLabel("Pull amount");
-			add(pnl);
-			pn = new JTextPane();
-			pn.setText("100");
-			add(pn);
-			pb = new JButton("Pull");
-			pb.addActionListener(new ActionListener(){
-				public void actionPerformed(ActionEvent arg0) {
-					exe.execute(new PullLoop());
-				}
-			});
-			add(pb);
-			clr = new JButton("Clear");
-			clr.addActionListener(new ActionListener(){
-				public void actionPerformed(ActionEvent arg0) {
-					clear();
-				}
-			});
-			add(clr);
-			pch = new JLabel("Pool size:");
-			add(pch);
-			exe.execute(new PaintLoop());
-		}
-		
-		public class PullLoop implements Runnable{
-			public void run(){
-				pulling = true;
-				ready = false;
-				int times = Integer.parseInt(pn.getText());
-				for(int i=0;i<times;i++){
-					boolean p = pull();
-					if(p){
-						System.out.println("Loaded "+i+" out of "+poolsize);
-					}else{
-						System.out.println("Failed to load at "+i);
-						i--;
-					}
-				}
-				setup();
-				pulling = false;
-				ready = true;
-			}
-		}
-		
-		public class PaintLoop implements Runnable{
-			public void run() {
-				while(true){
-					Graphics g = b.getDrawGraphics();
-					insets = getInsets();
-					//rr.setBounds(insets.left+200,0,ww.getWidth(),ww.getHeight());
-					sbu.setBounds(insets.left+10,insets.top+10,180,30);
-					sbu.setEnabled(ready);
-					if(ready){
-						sbu.setText("Sample!");
-					}else{
-						sbu.setText("Not Ready!");
-					}
-					inp.setBounds(insets.left+10,insets.top+50,180,80);
-					wisl.setBounds(insets.left+10,insets.top+140,180,30);
-					wis.setBounds(insets.left+100,insets.top+140,90,30);
-					csil.setBounds(insets.left+10,insets.top+180,180,30);
-					csi.setBounds(insets.left+100,insets.top+180,90,30);
-					pnl.setBounds(insets.left+10,insets.top+220,90,30);
-					pn.setBounds(insets.left+100,insets.top+220,90,30);
-					pb.setBounds(insets.left+10,insets.top+260,180,30);
-					pb.setEnabled(!pulling);
-					clr.setBounds(insets.left+10,insets.top+300,180,30);
-					pch.setBounds(insets.left+10,insets.top+340,180,30);
-					pch.setText("Pool size: "+poolsize);
-					//
-					Graphics2D g2 = (Graphics2D)g.create();
-					g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-			        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-			        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-					setBackground(Color.WHITE);
-					try{
-						g2.drawImage(desample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale),null);
-						revalidate();
-						setPreferredSize(new Dimension((int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(ppp.length*ppp[0][0].getHeight()*scale)));
-					}catch(Exception ex){}
-				}
-			}	
-		}
-	}
 
 	public static void main(String[] args){
-		new RandMtg();
+		new MTG();
 	}
 }
