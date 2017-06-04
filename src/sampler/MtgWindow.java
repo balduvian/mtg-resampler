@@ -9,6 +9,8 @@ import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowEvent;
@@ -62,6 +64,7 @@ public class MtgWindow extends JFrame{
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		continent = new JPanel();
 		add(continent);
+		insets = continent.getInsets();
 		sbu = new JButton();
 		continent.add(sbu);
 		sbu.addActionListener(new ActionListener(){
@@ -116,11 +119,23 @@ public class MtgWindow extends JFrame{
 		continent.add(sv);
 		pch = new JLabel("Pool size:");
 		continent.add(pch);
+		continent.addComponentListener(new ComponentListener(){
+			public void componentHidden(ComponentEvent arg0) {
+			}
+			public void componentMoved(ComponentEvent arg0) {
+				insets = continent.getInsets();
+			}
+			public void componentResized(ComponentEvent arg0) {
+				insets = continent.getInsets();
+			}
+			public void componentShown(ComponentEvent arg0) {
+				insets = continent.getInsets();
+			}
+		});
 	}
 	
 	public void gopaint(){
 		
-		insets = continent.getInsets();
 		rr.setBounds(insets.left+200,0,getWidth(),getHeight());
 		sbu.setBounds(insets.left+10,insets.top+10,180,30);
 		sbu.setEnabled(MTG.activity==MTG.NOACTIVITY && MTG.poolsize>0);
@@ -165,13 +180,15 @@ public class MtgWindow extends JFrame{
 			    g.fillRect(0, 0, rr.getWidth(), rr.getHeight());
 			    
 			    //superdebug
-			   /* try{
+			    try{
 				    for(int y=0;y<27;y++){
 						for(int x=0;x<27;x++){
-							g.drawImage(MTG.cards[MTG.lit[Integer.parseInt(csi.getText())][y][x]-1], (int)(x*MTG.basecardwidth*0.1), (int)(y*MTG.basecardwidth*0.1), (int)(MTG.basecardwidth*0.1), (int)(MTG.basecardwidth*0.1), null);
+							try{
+								g.drawImage(MTG.cards[MTG.lit[Integer.parseInt(csi.getText())][y][x]-1], (int)(x*MTG.basecardwidth*0.1), (int)(y*MTG.basecardwidth*0.1), (int)(MTG.basecardwidth*0.1), (int)(MTG.basecardwidth*0.1), null);
+							}catch(Exception ex){}
 						}
 					}
-			    }catch(Exception ex){}*/
+			    }catch(Exception ex){}
 			    
 				if(MTG.desample != null){
 				    g.drawImage(MTG.resample,0,0,(int)(MTG.desample.getWidth()*scale),(int)(MTG.desample.getHeight()*scale),null);

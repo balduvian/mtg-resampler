@@ -1,35 +1,16 @@
 package sampler;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.Insets;
-import java.awt.RenderingHints;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
-import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.imageio.ImageIO;
-import javax.swing.Icon;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JTextArea;
-import javax.swing.JTextPane;
 
 public class MTG {
 	
@@ -37,7 +18,7 @@ public class MTG {
 	
 	public static final int CROPX1 = 19;
 	public static final int CROPY1 = 37;
-	public static final int CROPX2 = 206;
+	public static final int CROPX2 = 205;
 	public static final int CROPY2 = 173;
 	
 	MtgWindow ww;
@@ -75,7 +56,6 @@ public class MTG {
 	static BufferedImage def;
 	static BufferedImage resample;
 	static BufferedImage desample;
-	static BufferedImage[][] ppp;
 	static int[][][] lit;
 	double lratio;
 	
@@ -107,18 +87,22 @@ public class MTG {
 	
 	public void getLit(){
 		int ccount  =0;
-		int ls = 27;
+		int ls = 16;
+		int total = ls*ls*ls;
 		lit = new int[ls][ls][ls]; 
 		lratio = ls/256.0;
 		for(int i =0;i<poolsize;i++){
 			Color cc = colors[i];
-			if(lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)]==0){
+			int offr=(int)(cc.getRed()*lratio);
+			int offg=(int)(cc.getGreen()*lratio);
+			int offb=(int)(cc.getBlue()*lratio);
+			if(lit[offr][offg][offb]==0){
 				ccount++;
+				lit[offr][offg][offb] = i+1;
 			}
-			lit[(int)(cc.getRed()*lratio)][(int)(cc.getGreen()*lratio)][(int)(cc.getBlue()*lratio)] = i+1;
 		}
 		int[][][] tlit = new int[ls][ls][ls];
-		while(ccount<ls*ls*ls){
+		while(ccount<total){
 			for(int r =0;r<ls;r++){
 				for(int g =0;g<ls;g++){
 					for(int b =0;b<ls;b++){
@@ -223,19 +207,24 @@ public class MTG {
 	}
 	
 	public Color getAvg(BufferedImage b){
-		LinkedList<Color> cs = new LinkedList<Color>();
-		for(int y=0;y<b.getHeight();y+=3){
-			for(int x=0;x<b.getWidth();x+=3){
-				cs.add(new Color(b.getRGB(x, y)));
+		int bwid = b.getWidth();
+		int bhid = b.getHeight();
+		int cst = bhid*bwid;
+		Color[] cs = new Color[cst];
+		int t=0;
+		for(int y=0;y<b.getHeight();y++){
+			for(int x=0;x<b.getWidth();x++){
+				cs[t] = new Color(b.getRGB(x, y));
+				t++;
 			}
 		}
-		int[] t = new int[3];
-		for(int i=0;i<cs.size();i++){
-			t[0] += cs.get(i).getRed();
-			t[1] += cs.get(i).getGreen();
-			t[2] += cs.get(i).getBlue();
+		int[] tots = new int[3];
+		for(int i=0;i<cst;i++){
+			tots[0] += cs[i].getRed();
+			tots[1] += cs[i].getGreen();
+			tots[2] += cs[i].getBlue();
 		}
-		return new Color(t[0]/cs.size(),t[1]/cs.size(),t[2]/cs.size());
+		return new Color(tots[0]/cst,tots[1]/cst,tots[2]/cst);
 	}
 	
 	public BufferedImage scale(BufferedImage b, int iw, int ih){
@@ -254,7 +243,7 @@ public class MTG {
 		cindex = 0;
 	}
 	
-	public void supersample(){
+	public boolean supersample(){
 		
 		try{
 			resample = ImageIO.read(new File(ww.inp.getText()));
@@ -273,8 +262,7 @@ public class MTG {
 			int www = newacross;
 			
 			BufferedImage sampp = new BufferedImage(www,hhh,BufferedImage.TYPE_INT_RGB);
-			ppp = new BufferedImage[hhh][www];
-			desample = new BufferedImage(www*picw,hhh*pich,BufferedImage.TYPE_INT_RGB);
+			desample = new BufferedImage(www*picw,hhh*pich,BufferedImage.TYPE_INT_ARGB);
 			
 			double wiw = ((double)origw/www);
 			double hih = ((double)origh/hhh);
@@ -285,34 +273,30 @@ public class MTG {
 					sampp.setRGB(x, y, getAvg(crop(resample,(int)(x*wiw),(int)(y*hih),(int)(x*wiw+wiw),(int)(y*hih+hih))).getRGB());
 					Color tc = new Color(sampp.getRGB(x, y));
 					int vari = lit[(int)(tc.getRed()*lratio)][(int)(tc.getGreen()*lratio)][(int)(tc.getBlue()*lratio)]-1;
-					BufferedImage tb = cards[vari];
-					ppp[y][x] = tb;
 					g.drawImage(cards[vari], x*picw, y*pich, picw, pich, null);
+					//superwait(1);
 				}
 			}
+			return true;
 		}catch(Exception ex){
-			activity = ERRORACTIVITY;
+			return false;
 		}
 	}
 	
 	public void supersave(){
-		try{
-			File f;
-			int c=0;
-			while(true){
-				f = new File(System.getProperty("user.home") + "/Desktop/sampled/" + "samp"+c+".png");
-				if(!f.exists()){
-					break;
-				}else{
-					c++;
-				}
+		File f;
+		int c=0;
+		while(true){
+			f = new File(System.getProperty("user.home") + "/Desktop/sampled/" + "samp"+c+".png");
+			if(!f.exists()){
+				break;
+			}else{
+				c++;
 			}
-			try {
-				ImageIO.write(desample, "PNG", f);
-			}catch (IOException ex){}
-		}catch(Exception ex){
-			activity = ERRORACTIVITY;
 		}
+		try {
+			ImageIO.write(desample, "PNG", f);
+		}catch (IOException ex){}
 	}
 	
 	public void superpull(){
@@ -386,13 +370,17 @@ public class MTG {
 					superpull();
 					activity = SETUPACTIVITY;
 				}else if(activity==SAMPLEACTIVITY){
-					supersample();
-					activity = NOACTIVITY;
+					if(supersample()){;
+						activity = NOACTIVITY;
+					}else{
+						activity = ERRORACTIVITY;
+					}
 				}else if(activity==CLEARACTIVITY){
 					superclear();
 					activity = SETUPACTIVITY;
 				}else if(activity==ERRORACTIVITY){
 					superwait(500);
+					activity = NOACTIVITY;
 				}else if(activity==SAVEACTIVITY){
 					supersave();
 					activity = NOACTIVITY;
