@@ -15,6 +15,8 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -42,15 +44,19 @@ public class MTG {
 	
 	public static final int NOACTIVITY = 0;
 	public static final int PULLACTIVITY = 1;
-	public static final int SETUPACTIVITY = 1;
-	public static final int SAMPLEACTIVITY = 2;
-	public int activity;
+	public static final int SETUPACTIVITY = 2;
+	public static final int SAMPLEACTIVITY = 3;
+	public static final int CLEARACTIVITY = 4;
+	public static final int ERRORACTIVITY = 5;
+	public static final int SAVEACTIVITY = 6;
+	public static int activity;
 	
+	static int newacross;
 	static int newcardwidth;
 	static double newscale;
 	
-	private int basecardheight;
-	private int basecardwidth;
+	static int basecardheight;
+	static int basecardwidth;
 	
 	static int poolsize;
 	
@@ -63,11 +69,14 @@ public class MTG {
 	static int oindex;
 	static Color[] colors;
 	
+	static int pulload;
+	static int pullamm;
+	
 	static BufferedImage def;
 	static BufferedImage resample;
 	static BufferedImage desample;
 	static BufferedImage[][] ppp;
-	int[][][] lit;
+	static int[][][] lit;
 	double lratio;
 	
 	private ExecutorService exe;
@@ -82,12 +91,18 @@ public class MTG {
 	}
 	
 	public void setup(){
+		desample = null;
 		cindex = 0;
 		oindex = 0;
 		findex = 0;
 		getPools();
-		getLit();
-		ww.ready = true;
+		if(poolsize>0){
+			getLit();
+			BufferedImage tsss = full[0];
+			basecardheight = tsss.getHeight();
+			basecardwidth = tsss.getWidth();
+			tsss = null;
+		}
 	}
 	
 	public void getLit(){
@@ -114,20 +129,25 @@ public class MTG {
 			for(int r =0;r<ls;r++){
 				for(int g =0;g<ls;g++){
 					for(int b =0;b<ls;b++){
+						
 						if(lit[r][g][b] != 0){
 							int sel = lit[r][g][b];
+							
 							for(int z=-1;z<=1;z++){
 								for(int y=-1;y<=1;y++){
 									for(int x=-1;x<=1;x++){
+										
 										if(r+z>-1&&r+z<ls&&g+y>-1&&g+y<ls&&b+x>-1&&b+x<ls&&lit[r+z][g+y][b+x]==0&&tlit[r+z][g+y][b+x]==0){
 											tlit[r+z][g+y][b+x] = sel;
 											ccount++;
-											//System.out.println(ccount+" | "+r+" "+g+" "+b);
 										}
+										
 									}
 								}
 							}
+							
 						}
+						
 					}
 				}
 			}
@@ -155,6 +175,7 @@ public class MTG {
 	}
 	
 	public void getPools(){
+		pulload = 0;
 		File folder = new File(uni);
 		File[] files = folder.listFiles();
 		poolsize = files.length;
@@ -167,7 +188,7 @@ public class MTG {
 				addtocards(ti);
 				addtofull(ti);
 				addtocolors(getAvg(ti));
-				System.out.println("Got "+(i+1)+" out of "+poolsize);
+				pulload = i+1;
 			}catch(Exception ex){
 				ex.printStackTrace();
 			}
@@ -224,11 +245,7 @@ public class MTG {
 		return bb;
 	}
 	
-	public void foundln(int www, int hhh, int ind, int x, int y){
-		System.out.println("Found! - "+ind+" - "+Math.round(((double)(y*www)+(double)(x%www))/(double)(hhh*www)*100)+"%");
-	}
-	
-	public void scaleall(int pich, int picw){
+	public void scaleall(int picw, int pich){
 		BufferedImage[] angel = new BufferedImage[poolsize];
 		for(int i=0;i<poolsize;i++){
 			angel[i] = scale(full[i],picw,pich);
@@ -237,56 +254,78 @@ public class MTG {
 		cindex = 0;
 	}
 	
-	//resample(resample,Integer.parseInt(csi.getText()),(int)(Integer.parseInt(csi.getText())*(double)full[0].getHeight()/full[0].getWidth()),Integer.parseInt(wis.getText()));
 	public void supersample(){
-		resample(resample);
+		
+		try{
+			resample = ImageIO.read(new File(ww.inp.getText()));
+			newacross = Integer.parseInt(ww.wis.getText());
+			newcardwidth = Integer.parseInt(ww.csi.getText());
+			
+			int picw = (int)(newcardwidth);
+			int pich = (int)(newcardwidth*((double)basecardheight/basecardwidth));
+			
+			scaleall(picw,pich);
+			
+			int origh = resample.getHeight();
+			int origw = resample.getWidth();
+			
+			int hhh = (int)(newacross*((double)origh/origw)*((double)picw/pich));
+			int www = newacross;
+			
+			BufferedImage sampp = new BufferedImage(www,hhh,BufferedImage.TYPE_INT_RGB);
+			ppp = new BufferedImage[hhh][www];
+			desample = new BufferedImage(www*picw,hhh*pich,BufferedImage.TYPE_INT_RGB);
+			
+			double wiw = ((double)origw/www);
+			double hih = ((double)origh/hhh);
+			
+			Graphics g = desample.createGraphics();
+			for(int y=0;y<hhh;y++){
+				for(int x=0;x<www;x++){
+					sampp.setRGB(x, y, getAvg(crop(resample,(int)(x*wiw),(int)(y*hih),(int)(x*wiw+wiw),(int)(y*hih+hih))).getRGB());
+					Color tc = new Color(sampp.getRGB(x, y));
+					int vari = lit[(int)(tc.getRed()*lratio)][(int)(tc.getGreen()*lratio)][(int)(tc.getBlue()*lratio)]-1;
+					BufferedImage tb = cards[vari];
+					ppp[y][x] = tb;
+					g.drawImage(cards[vari], x*picw, y*pich, picw, pich, null);
+				}
+			}
+		}catch(Exception ex){
+			activity = ERRORACTIVITY;
+		}
 	}
 	
-	public void resample(BufferedImage s, int across, double scl){
-		scaleall((int)(basecardheight*scl),(int)(basecardwidth*scl));
-		
-		int hhh = (int)((double)s.getHeight()/(double)basecardheight*scl);
-		int www = (int)((double)s.getWidth()/(double)basecardwidth*scl);
-		
-		hhh = (int)((double)scl*(double)s.getHeight()/s.getWidth()*(double)picw/pich);
-		www = (int)(scl);
-		
-		BufferedImage sampp = new BufferedImage(www,hhh,BufferedImage.TYPE_INT_RGB);
-		ppp = new BufferedImage[hhh][www];
-		desample = new BufferedImage(www*picw,hhh*pich,BufferedImage.TYPE_INT_ARGB);
-		Graphics g = desample.createGraphics();
-		for(int y=0;y<hhh;y++){
-			for(int x=0;x<www;x++){
-				double wiw = ((double)s.getWidth()/(double)www);
-				double hih = ((double)s.getHeight()/(double)hhh);
-				sampp.setRGB(x, y, getAvg(crop(s,(int)(x*wiw),(int)(y*hih),(int)(x*wiw+wiw),(int)(y*hih+hih))).getRGB());
-				Color tc = new Color(sampp.getRGB(x, y));
-				int vari = lit[(int)(tc.getRed()*lratio)][(int)(tc.getGreen()*lratio)][(int)(tc.getBlue()*lratio)]-1;
-				BufferedImage tb = cards[vari];
-				ppp[y][x] = tb;
-				g.drawImage(cards[vari], x*tb.getWidth(), y*tb.getHeight(), tb.getWidth(), tb.getHeight(), null);
-				//if(!rep){   REP HAS BEEN RIPPED
-				//	pool.remove(vari);
-				//	cpool.remove(vari);
-				//}
-				//foundln(www, hhh, vari, x, y);
+	public void supersave(){
+		try{
+			File f;
+			int c=0;
+			while(true){
+				f = new File(System.getProperty("user.home") + "/Desktop/sampled/" + "samp"+c+".png");
+				if(!f.exists()){
+					break;
+				}else{
+					c++;
+				}
 			}
+			try {
+				ImageIO.write(desample, "PNG", f);
+			}catch (IOException ex){}
+		}catch(Exception ex){
+			activity = ERRORACTIVITY;
 		}
-		System.out.println("SAMPLED");
-		File f;
-		int c=0;
-		while(true){
-			f = new File(System.getProperty("user.home") + "/Desktop/sampled/" + "samp"+c+".png");
-			if(!f.exists()){
-				break;
+	}
+	
+	public void superpull(){
+		pullamm = Integer.parseInt(ww.pn.getText());
+		pulload = 0;
+		for(int i=0;i<pullamm;i++){
+			boolean p = pull();
+			if(p){
+				pulload = (i+1);
 			}else{
-				c++;
+				i--;
 			}
 		}
-		try {
-			ImageIO.write(desample, "PNG", f);
-		}catch (IOException ex){}
-		System.out.println("DONE");
 	}
 	
 	public boolean pull(){
@@ -306,11 +345,10 @@ public class MTG {
 		}
 	}
 	
-	public void clear(){
+	public void superclear(){
 		File f = new File(uni);
 		File[] clist = f.listFiles();
 		for(int i=0;i<clist.length;i++){
-			System.out.println("Deleted "+clist[i].getName()+"!");
 			clist[i].delete();
 		}
 	}
@@ -320,37 +358,52 @@ public class MTG {
 		if (!df.exists()){
 			df.mkdir();
 		}
-		df = new File(System.getProperty("user.home") + "/Desktop/sampled"); //YASS MAOIN
+		df = new File(System.getProperty("user.home") + "/Desktop/sampled");
 		if (!df.exists()){
 			df.mkdir();
 		}
+		
 		ww = new MtgWindow();
+		
 		try{ def = ImageIO.read(getClass().getResource("Image.jpg"));} catch (IOException e) {}
 		def = crop(def);
-		setup();
 		
-		exe = Executors.newFixedThreadPool(2);
-		exe.execute(new GameLoop());
+		exe = Executors.newFixedThreadPool(3);
 		exe.execute(new PaintLoop());
+		activity = SETUPACTIVITY;
+		exe.execute(new GameLoop());
 	}
 	
 	public class GameLoop implements Runnable{
 		public void run(){
 			while(true){
 				if(activity==NOACTIVITY){
-					
+					Math.random();
 				}else if(activity==SETUPACTIVITY){
 					setup();
 					activity = NOACTIVITY;
 				}else if(activity==PULLACTIVITY){
 					superpull();
-					activity = NOACTIVITY;
+					activity = SETUPACTIVITY;
 				}else if(activity==SAMPLEACTIVITY){
-					resample();
+					supersample();
+					activity = NOACTIVITY;
+				}else if(activity==CLEARACTIVITY){
+					superclear();
+					activity = SETUPACTIVITY;
+				}else if(activity==ERRORACTIVITY){
+					superwait(500);
+				}else if(activity==SAVEACTIVITY){
+					supersave();
 					activity = NOACTIVITY;
 				}
 			}
 		}
+	}
+	
+	public void superwait(int milis){
+		Long goal = System.currentTimeMillis()+milis;
+		while(System.currentTimeMillis()<goal){}
 	}
 	
 	public class PaintLoop implements Runnable{

@@ -1,5 +1,6 @@
 package sampler;
 
+import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -22,16 +23,17 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 
 public class MtgWindow extends JFrame{
 	private static final long serialVersionUID = -44669440408101826L;
 	
-	boolean pulling;
-	boolean ready;
-	
 	double scale = 0.3;
+	JPanel continent;
+	Canvas rr;
+	BufferStrategy bu;
 	JButton sbu;
 	JTextArea inp;
 	JLabel wisl;
@@ -39,121 +41,103 @@ public class MtgWindow extends JFrame{
 	JLabel csil;
 	JTextPane csi;
 	JButton gets;
-	BufferStrategy b;
 	JLabel pnl;
 	JTextPane pn;
 	JButton pb;
 	JButton clr;
+	JButton sv;
 	JLabel pch;
 	Insets insets;
 	
 	public MtgWindow(){
+		this.setIconImage(MTG.def);
 		setTitle("MTG Resample");
-		setSize(800,480);
+		setSize(800,500);
 		setVisible(true);
-		setPreferredSize(getSize());
-		
 		addMouseWheelListener(new MouseWheelListener(){
 			public void mouseWheelMoved(MouseWheelEvent e) {
 				scale *= (double)((e.getWheelRotation()*-1)+22)/(double)22;
 			}
-		});	
-		addWindowListener(new WindowListener(){
-			public void windowActivated(WindowEvent arg0) {
-			}
-			public void windowClosed(WindowEvent e) {
-			}
-			public void windowClosing(WindowEvent e) {
-				System.exit(0);
-			}
-			public void windowDeactivated(WindowEvent e) {
-			}
-			public void windowDeiconified(WindowEvent e) {
-			}
-			public void windowIconified(WindowEvent e) {
-			}
-			public void windowOpened(WindowEvent e) {
-			}	
 		});
-		insets = getInsets();
-		createBufferStrategy(2);
-		b = getBufferStrategy();
+		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		continent = new JPanel();
+		add(continent);
 		sbu = new JButton();
-		add(sbu);
+		continent.add(sbu);
 		sbu.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent arg0) {
-				try{ resample = ImageIO.read(new File(inp.getText()));} catch (IOException e) {
-					e.printStackTrace();
-				}
-				resample(resample,Integer.parseInt(csi.getText()),(int)(Integer.parseInt(csi.getText())*(double)full[0].getHeight()/full[0].getWidth()),Integer.parseInt(wis.getText()));
+			public void actionPerformed(ActionEvent e) {
+				MTG.activity = MTG.SAMPLEACTIVITY;
 			}
 		});
-		sbu.setIcon((Icon)def);
+		rr = new Canvas();
+		continent.add(rr);
+		rr.createBufferStrategy(2);
+		bu = rr.getBufferStrategy();
 		inp = new JTextArea();
 		inp.setEditable(true);
 		inp.setLineWrap(true);
 		inp.setAutoscrolls(true);
-		add(inp);
+		continent.add(inp);
 		wisl = new JLabel("Cards Across");
-		add(wisl);
+		continent.add(wisl);
 		wis = new JTextPane();
 		wis.setText("100");
-		add(wis);
+		continent.add(wis);
 		csil = new JLabel("Card width");
-		add(csil);
+		continent.add(csil);
 		csi = new JTextPane();
 		csi.setText("30");
-		add(csi);
+		continent.add(csi);
 		pnl = new JLabel("Pull amount");
-		add(pnl);
+		continent.add(pnl);
 		pn = new JTextPane();
 		pn.setText("100");
-		add(pn);
+		continent.add(pn);
 		pb = new JButton("Pull");
 		pb.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				exe.execute(new PullLoop());
+				MTG.activity = MTG.PULLACTIVITY;
 			}
 		});
-		add(pb);
+		continent.add(pb);
 		clr = new JButton("Clear");
 		clr.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				clear();
+				MTG.activity = MTG.CLEARACTIVITY;
 			}
 		});
-		add(clr);
+		continent.add(clr);
+		sv = new JButton("Save");
+		sv.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				MTG.activity = MTG.SAVEACTIVITY;
+			}
+		});
+		continent.add(sv);
 		pch = new JLabel("Pool size:");
-		add(pch);
-		exe.execute(new PaintLoop());
+		continent.add(pch);
 	}
 	
-			pulling = true;
-			ready = false;
-			int times = Integer.parseInt(pn.getText());
-			for(int i=0;i<times;i++){
-				boolean p = pull();
-				if(p){
-					System.out.println("Loaded "+i+" out of "+poolsize);
-				}else{
-					System.out.println("Failed to load at "+i);
-					i--;
-				}
-			}
-			setup();
-			pulling = false;
-			ready = true;
-	
 	public void gopaint(){
-		Graphics g = b.getDrawGraphics();
-		insets = getInsets();
-		//rr.setBounds(insets.left+200,0,ww.getWidth(),ww.getHeight());
+		
+		insets = continent.getInsets();
+		rr.setBounds(insets.left+200,0,getWidth(),getHeight());
 		sbu.setBounds(insets.left+10,insets.top+10,180,30);
-		sbu.setEnabled(ready);
-		if(ready){
+		sbu.setEnabled(MTG.activity==MTG.NOACTIVITY && MTG.poolsize>0);
+		if(MTG.activity==MTG.NOACTIVITY){
 			sbu.setText("Sample!");
-		}else{
-			sbu.setText("Not Ready!");
+		}else if(MTG.activity==MTG.PULLACTIVITY){
+			sbu.setText("Pulling "+MTG.pulload+" out of "+MTG.pullamm);
+		}else if(MTG.activity==MTG.CLEARACTIVITY){
+			sbu.setText("Clearing...");
+		}else if(MTG.activity==MTG.SAMPLEACTIVITY){
+			sbu.setText("Sampling...");
+		}else if(MTG.activity==MTG.SETUPACTIVITY){
+			sbu.setText("loading "+MTG.pulload+" out of "+MTG.poolsize);
+		}else if(MTG.activity==MTG.ERRORACTIVITY){
+			sbu.setText("Error finding image");
+		}else if(MTG.activity==MTG.SAVEACTIVITY){
+			sbu.setText("Saving...");
 		}
 		inp.setBounds(insets.left+10,insets.top+50,180,80);
 		wisl.setBounds(insets.left+10,insets.top+140,180,30);
@@ -163,21 +147,41 @@ public class MtgWindow extends JFrame{
 		pnl.setBounds(insets.left+10,insets.top+220,90,30);
 		pn.setBounds(insets.left+100,insets.top+220,90,30);
 		pb.setBounds(insets.left+10,insets.top+260,180,30);
-		pb.setEnabled(!pulling);
+		pb.setEnabled(MTG.activity==MTG.NOACTIVITY);
 		clr.setBounds(insets.left+10,insets.top+300,180,30);
-		pch.setBounds(insets.left+10,insets.top+340,180,30);
-		pch.setText("Pool size: "+poolsize);
-		//
-		Graphics2D g2 = (Graphics2D)g.create();
-		g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-		setBackground(Color.WHITE);
-		try{
-			g2.drawImage(MTG.desample,0,0,(int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(MTG.ppp.length*MTG.ppp[0][0].getHeight()*scale),null);
-			revalidate();
-			setPreferredSize(new Dimension((int)(ppp[0].length*ppp[0][0].getWidth()*scale),(int)(MTG.ppp.length*MTG.ppp[0][0].getHeight()*scale)));
-		}catch(Exception ex){}
+		clr.setEnabled(MTG.activity==MTG.NOACTIVITY && MTG.poolsize>0);
+		sv.setBounds(insets.left+10,insets.top+340,180,30);
+		sv.setEnabled(MTG.activity==MTG.NOACTIVITY && MTG.desample !=null);
+		pch.setBounds(insets.left+10,insets.top+380,180,30);
+		pch.setText("Pool size: "+MTG.poolsize);
+		
+		Graphics2D g = (Graphics2D)bu.getDrawGraphics();
+		do{
+			try {
+				g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+		        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		        g.setColor(Color.white);
+			    g.fillRect(0, 0, rr.getWidth(), rr.getHeight());
+			    
+			    //superdebug
+			   /* try{
+				    for(int y=0;y<27;y++){
+						for(int x=0;x<27;x++){
+							g.drawImage(MTG.cards[MTG.lit[Integer.parseInt(csi.getText())][y][x]-1], (int)(x*MTG.basecardwidth*0.1), (int)(y*MTG.basecardwidth*0.1), (int)(MTG.basecardwidth*0.1), (int)(MTG.basecardwidth*0.1), null);
+						}
+					}
+			    }catch(Exception ex){}*/
+			    
+				if(MTG.desample != null){
+				    g.drawImage(MTG.resample,0,0,(int)(MTG.desample.getWidth()*scale),(int)(MTG.desample.getHeight()*scale),null);
+					g.drawImage(MTG.desample,0,0,(int)(MTG.desample.getWidth()*scale),(int)(MTG.desample.getHeight()*scale),null);
+				}
+			}finally{
+				g.dispose();
+			}
+			bu.show();
+		}while(bu.contentsLost());
 	}
 
 }
