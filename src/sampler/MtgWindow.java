@@ -2,8 +2,6 @@ package sampler;
 
 import java.awt.Canvas;
 import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.RenderingHints;
@@ -13,20 +11,13 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.awt.image.BufferStrategy;
-import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.Executors;
-
-import javax.imageio.ImageIO;
-import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.JTextPane;
 
 public class MtgWindow extends JFrame{
@@ -39,12 +30,12 @@ public class MtgWindow extends JFrame{
 	JButton sbu;
 	JTextArea inp;
 	JLabel wisl;
-	JTextPane wis;
+	JTextField wis;
 	JLabel csil;
-	JTextPane csi;
+	JTextField csi;
 	JButton gets;
 	JLabel pnl;
-	JTextPane pn;
+	JTextField pn;
 	JButton pb;
 	JButton clr;
 	JButton sv;
@@ -63,6 +54,7 @@ public class MtgWindow extends JFrame{
 		});
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		continent = new JPanel();
+		continent.setLayout(null);
 		add(continent);
 		insets = continent.getInsets();
 		sbu = new JButton();
@@ -83,17 +75,17 @@ public class MtgWindow extends JFrame{
 		continent.add(inp);
 		wisl = new JLabel("Cards Across");
 		continent.add(wisl);
-		wis = new JTextPane();
+		wis = new JTextField();
 		wis.setText("100");
 		continent.add(wis);
 		csil = new JLabel("Card width");
 		continent.add(csil);
-		csi = new JTextPane();
+		csi = new JTextField();
 		csi.setText("30");
 		continent.add(csi);
 		pnl = new JLabel("Pull amount");
 		continent.add(pnl);
-		pn = new JTextPane();
+		pn = new JTextField();
 		pn.setText("100");
 		continent.add(pn);
 		pb = new JButton("Pull");
@@ -123,21 +115,37 @@ public class MtgWindow extends JFrame{
 			public void componentHidden(ComponentEvent arg0) {
 			}
 			public void componentMoved(ComponentEvent arg0) {
-				insets = continent.getInsets();
+				rebound();
 			}
 			public void componentResized(ComponentEvent arg0) {
-				insets = continent.getInsets();
+				rebound();
 			}
 			public void componentShown(ComponentEvent arg0) {
-				insets = continent.getInsets();
+				rebound();
 			}
 		});
+		rebound();
+	}
+	
+	public void rebound(){
+		insets = continent.getInsets();
+		rr.setBounds(insets.left+200,0,getWidth(),getHeight());
+		sbu.setBounds(insets.left+10,insets.top+10,180,30);
+		inp.setBounds(insets.left+10,insets.top+50,180,80);
+		wisl.setBounds(insets.left+10,insets.top+140,180,30);
+		wis.setBounds(insets.left+100,insets.top+140,90,30);
+		csil.setBounds(insets.left+10,insets.top+180,180,30);
+		csi.setBounds(insets.left+100,insets.top+180,90,30);
+		pnl.setBounds(insets.left+10,insets.top+220,90,30);
+		pn.setBounds(insets.left+100,insets.top+220,90,30);
+		pb.setBounds(insets.left+10,insets.top+260,180,30);
+		clr.setBounds(insets.left+10,insets.top+300,180,30);
+		sv.setBounds(insets.left+10,insets.top+340,180,30);
+		pch.setBounds(insets.left+10,insets.top+380,180,30);
 	}
 	
 	public void gopaint(){
 		
-		rr.setBounds(insets.left+200,0,getWidth(),getHeight());
-		sbu.setBounds(insets.left+10,insets.top+10,180,30);
 		sbu.setEnabled(MTG.activity==MTG.NOACTIVITY && MTG.poolsize>0);
 		if(MTG.activity==MTG.NOACTIVITY){
 			sbu.setText("Sample!");
@@ -154,20 +162,9 @@ public class MtgWindow extends JFrame{
 		}else if(MTG.activity==MTG.SAVEACTIVITY){
 			sbu.setText("Saving...");
 		}
-		inp.setBounds(insets.left+10,insets.top+50,180,80);
-		wisl.setBounds(insets.left+10,insets.top+140,180,30);
-		wis.setBounds(insets.left+100,insets.top+140,90,30);
-		csil.setBounds(insets.left+10,insets.top+180,180,30);
-		csi.setBounds(insets.left+100,insets.top+180,90,30);
-		pnl.setBounds(insets.left+10,insets.top+220,90,30);
-		pn.setBounds(insets.left+100,insets.top+220,90,30);
-		pb.setBounds(insets.left+10,insets.top+260,180,30);
 		pb.setEnabled(MTG.activity==MTG.NOACTIVITY);
-		clr.setBounds(insets.left+10,insets.top+300,180,30);
 		clr.setEnabled(MTG.activity==MTG.NOACTIVITY && MTG.poolsize>0);
-		sv.setBounds(insets.left+10,insets.top+340,180,30);
 		sv.setEnabled(MTG.activity==MTG.NOACTIVITY && MTG.desample !=null);
-		pch.setBounds(insets.left+10,insets.top+380,180,30);
 		pch.setText("Pool size: "+MTG.poolsize);
 		
 		Graphics2D g = (Graphics2D)bu.getDrawGraphics();

@@ -14,12 +14,10 @@ import javax.imageio.ImageIO;
 
 public class MTG {
 	
-	//19,37,207,173
-	
 	public static final int CROPX1 = 19;
 	public static final int CROPY1 = 37;
 	public static final int CROPX2 = 205;
-	public static final int CROPY2 = 173;
+	public static final int CROPY2 = 172;
 	
 	MtgWindow ww;
 	
@@ -314,7 +312,7 @@ public class MTG {
 	
 	public boolean pull(){
 		BufferedImage now;
-		int numpass = (int)(Math.random()*420617+1);
+		int numpass = (int)(Math.random()*420617+43579);
 		now = getCard(numpass);
 		if(same(now, def)){
 			return false;
