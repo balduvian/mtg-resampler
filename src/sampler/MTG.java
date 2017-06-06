@@ -84,9 +84,10 @@ public class MTG {
 	}
 	
 	public void getLit(){
-		int ccount  =0;
-		int ls = 16;
-		int total = ls*ls*ls;
+		//int ccount  =0;
+		int ls = 32;
+		//int quarter = ls/4;
+		//int total = ls*ls*ls;
 		lit = new int[ls][ls][ls]; 
 		lratio = ls/256.0;
 		for(int i =0;i<poolsize;i++){
@@ -94,21 +95,15 @@ public class MTG {
 			int offr=(int)(cc.getRed()*lratio);
 			int offg=(int)(cc.getGreen()*lratio);
 			int offb=(int)(cc.getBlue()*lratio);
-			if(lit[offr][offg][offb]==0){
+			/*if(lit[offr][offg][offb]==0){
 				ccount++;
-				lit[offr][offg][offb] = i+1;
-			}
+			}*/
+			lit[offr][offg][offb] = i+1;
 		}
-		int[][][] tlit = new int[ls][ls][ls];
-		while(ccount<total){
-			for(int r =0;r<ls;r++){
-				for(int g =0;g<ls;g++){
-					for(int b =0;b<ls;b++){
-						tlit[r][g][b] = lit[r][g][b];
-					}
-				}
-			}
-			for(int r =0;r<ls;r++){
+		int[][][] tlit = lit.clone();
+		System.out.println(tlit[0][0][0]);
+		//while(ccount<total){
+			/*for(int r =0;r<ls;r++){
 				for(int g =0;g<ls;g++){
 					for(int b =0;b<ls;b++){
 						
@@ -131,16 +126,83 @@ public class MTG {
 						}
 						
 					}
-				}
-			}
+				}*/
 			for(int r =0;r<ls;r++){
+				for(int g =0;g<ls;g++){
+					for(int b =0;b<ls;b++){
+						if(lit[r][g][b] == 0){
+							int sintotal = 16;
+							int sindex = 0;
+							int[] suggest = new int[sintotal];
+							int range = 1;
+							overloop: while (sindex<sintotal){
+								for(int z=-range;z<=range;z++){
+									for(int y=-range;y<=range;y++){
+										for(int x=-range;x<=range;x++){
+											try{
+												if(lit[r+z][g+y][b+x] !=0){
+													if(sindex<sintotal){
+														System.out.println(lit[r+z][g+y][b+x]);
+														suggest[sindex] = lit[r+z][g+y][b+x];
+														sindex++;
+													}else{
+														break overloop;
+													}
+												}
+											}catch(Exception ex){}
+										}
+									}
+								}
+								range++;
+							}
+							//for(int i=0;i<sintotal;i++){
+							//	System.out.print(suggest[i]);
+							//}
+							//System.out.println();
+							boolean needed = true;
+							while(needed){
+								needed = false;
+								for(int i=0;i<sintotal-1;i++){
+									if(suggest[i]>suggest[i+1]){
+										needed = true;
+										int temp = suggest[i];
+										suggest[i] = suggest[i+1];
+										suggest[i+1] = temp;
+									}
+								}
+							}
+							int popular = 0;
+							int popcount = 0;
+							int popular2 = 0;
+							int popcount2 = 0;
+							for(int i=0;i<sintotal;i++){
+								if(suggest[i]!=popular2){
+									popular2 = suggest[i];
+									popcount2 = 1;
+								}else{
+									popcount2++;
+								}
+								if(popcount2>popcount){
+									popular = popular2;
+									popcount = popcount2;
+								}
+							}
+							//System.out.println(popular);
+							tlit[r][g][b] = popular;
+						}
+					}
+				}	
+			//}
+			/*for(int r =0;r<ls;r++){
 				for(int g =0;g<ls;g++){
 					for(int b =0;b<ls;b++){
 						lit[r][g][b] = tlit[r][g][b];
 					}
 				}
-			}
+			}*/
 		}
+		lit = tlit.clone();
+		//System.out.println("done");
 	}
 	
 	public void addtocolors(Color c){

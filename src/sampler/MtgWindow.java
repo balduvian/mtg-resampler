@@ -111,8 +111,10 @@ public class MtgWindow extends JFrame{
 		continent.add(sv);
 		pch = new JLabel("Pool size:");
 		continent.add(pch);
+		insets = continent.getInsets();
 		continent.addComponentListener(new ComponentListener(){
 			public void componentHidden(ComponentEvent arg0) {
+				rebound();
 			}
 			public void componentMoved(ComponentEvent arg0) {
 				rebound();
@@ -124,11 +126,6 @@ public class MtgWindow extends JFrame{
 				rebound();
 			}
 		});
-		rebound();
-	}
-	
-	public void rebound(){
-		insets = continent.getInsets();
 		rr.setBounds(insets.left+200,0,getWidth(),getHeight());
 		sbu.setBounds(insets.left+10,insets.top+10,180,30);
 		inp.setBounds(insets.left+10,insets.top+50,180,80);
@@ -142,6 +139,10 @@ public class MtgWindow extends JFrame{
 		clr.setBounds(insets.left+10,insets.top+300,180,30);
 		sv.setBounds(insets.left+10,insets.top+340,180,30);
 		pch.setBounds(insets.left+10,insets.top+380,180,30);
+	}
+	
+	public void rebound(){
+		rr.setBounds(insets.left+200,0,getWidth(),getHeight());
 	}
 	
 	public void gopaint(){
