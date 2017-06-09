@@ -99,33 +99,41 @@ public class MTG {
  				lit[offr][offg][offb] = i+1;
  			}
  		}
+ 		int numpos =6;
+ 		int[][] pos = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
  		int[][][] tlit = new int[ls][ls][ls];
  		while(ccount<total){
  			for(int r =0;r<ls;r++){
  				for(int g =0;g<ls;g++){
  					for(int b =0;b<ls;b++){
- 						tlit[r][g][b] = lit[r][g][b];
+ 						tlit[r][g][b] = lit[r][g][b];//the templit becomes a clone of the actual lit
  					}
  				}
  			}
- 			for(int r =0;r<ls;r++){
+ 			for(int r =0;r<ls;r++){//go through everything
  				for(int g =0;g<ls;g++){
  					for(int b =0;b<ls;b++){
  						
- 						if(lit[r][g][b] != 0){
- 							int sel = lit[r][g][b];
+ 						if(lit[r][g][b] != 0){//if on the current spot in the actual lit is filled in
+ 							int sel = lit[r][g][b];//the image to be drawn is that
  							
- 							for(int z=-1;z<=1;z++){
- 								for(int y=-1;y<=1;y++){
- 									for(int x=-1;x<=1;x++){
+ 							for(int p=0;p<numpos;p++){
+ 							//for(int z=-1;z<=1;z++){//for a 1*1 area around that square
+ 							//	for(int y=-1;y<=1;y++){
+ 							//		for(int x=-1;x<=1;x++){
  										
- 										if(r+z>-1&&r+z<ls&&g+y>-1&&g+y<ls&&b+x>-1&&b+x<ls&&lit[r+z][g+y][b+x]==0&&tlit[r+z][g+y][b+x]==0){
- 											tlit[r+z][g+y][b+x] = sel;
+ 										int rz = r+pos[p][0];
+ 										int gy = g+pos[p][1];
+ 										int bx = b+pos[p][2];
+ 										
+ 										if(rz>-1&&rz<ls&&gy>-1&&gy<ls&&bx>-1&&bx<ls&&lit[rz][gy][bx]==0&&tlit[rz][gy][bx]==0){//if it's in bounds, if theres nothing there on the temp lit or the actual lit //&&tlit[rz][gy][bx]==0
+ 											tlit[rz][gy][bx] = sel;//place
  											ccount++;
  										}
  										
- 									}
- 								}
+ 									//}
+ 								//}
+ 							//}
  							}
  							
  						}
@@ -133,7 +141,7 @@ public class MTG {
  					}
  				}
  			}
- 			for(int r =0;r<ls;r++){
+ 			for(int r =0;r<ls;r++){//the actual lit becomes a copy of the temporary lit
  				for(int g =0;g<ls;g++){
  					for(int b =0;b<ls;b++){
  						lit[r][g][b] = tlit[r][g][b];
@@ -142,6 +150,50 @@ public class MTG {
  			}
  		}
  	}
+	
+	/*for(int r =0;r<ls;r++){
+		for(int g =0;g<ls;g++){
+			for(int b =0;b<ls;b++){
+				tlit[r][g][b] = lit[r][g][b];
+			}
+		}
+	}
+	for(int r =0;r<ls;r++){
+		for(int g =0;g<ls;g++){
+			for(int b =0;b<ls;b++){
+				
+				if(lit[r][g][b] != 0){
+					int sel = lit[r][g][b];
+					
+					for(int z=-1;z<=1;z++){
+						for(int y=-1;y<=1;y++){
+							for(int x=-1;x<=1;x++){
+								
+								int rz = r+z;
+								int gy = g+y;
+								int bx = b+x;
+								
+								if(rz>-1&&rz<ls&&gy>-1&&gy<ls&&bx>-1&&bx<ls&&lit[rz][gy][bx]==0&&tlit[rz][gy][bx]==0){
+									tlit[r+z][g+y][b+x] = sel;
+									ccount++;
+								}
+								
+							}
+						}
+					}
+					
+				}
+				
+			}
+		}
+	}
+	for(int r =0;r<ls;r++){
+		for(int g =0;g<ls;g++){
+			for(int b =0;b<ls;b++){
+				lit[r][g][b] = tlit[r][g][b];
+			}
+		}
+	}*/
 	
 	public void addtocolors(Color c){
 		colors[oindex] = c;
