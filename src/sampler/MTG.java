@@ -14,6 +14,10 @@ import javax.imageio.ImageIO;
 
 public class MTG {
 	
+	public static final int R = 0;
+	public static final int G = 1;
+	public static final int B = 2;
+	
 	public static final int CROPX1 = 19;
 	public static final int CROPY1 = 37;
 	public static final int CROPX2 = 205;
@@ -46,7 +50,7 @@ public class MTG {
 	static BufferedImage[] full;
 	
 	static int oindex;
-	static Color[] colors;
+	static int[][] colors;
 	
 	static int pulload;
 	static int pullamm;
@@ -75,12 +79,36 @@ public class MTG {
 		findex = 0;
 		getPools();
 		if(poolsize>0){
-			getLit();
+			deepLit();
+			//getLit();
 			BufferedImage tsss = full[0];
 			basecardheight = tsss.getHeight();
 			basecardwidth = tsss.getWidth();
 			tsss = null;
 		}
+	}
+	
+	public void deepLit(){
+		int ls = 64;
+ 		lratio = ls/256.0;
+ 		lit = new int[ls][ls][ls];
+ 		for(int r =0;r<ls;r++){
+			for(int g =0;g<ls;g++){
+				for(int b =0;b<ls;b++){			
+					int best = 1;
+					int bestby = (int)(Math.abs((colors[0][R]*lratio)-r) + Math.abs((colors[0][G]*lratio)-g) + Math.abs((colors[0][B]*lratio)-b) );
+					for(int i=1;i<poolsize;i++){
+						int[] tomb = colors[i];
+						int runnup = (int)(Math.abs((tomb[R]*lratio)-r) + Math.abs((tomb[G]*lratio)-g) + Math.abs((tomb[B]*lratio)-b) );
+						if(runnup<=bestby){
+							bestby = runnup;
+							best = i+1;
+						}
+					}
+					lit[r][g][b] = best;
+				}
+			}
+ 		}
 	}
 	
 	public void getLit(){
@@ -90,18 +118,20 @@ public class MTG {
  		lit = new int[ls][ls][ls]; 
  		lratio = ls/256.0;
  		for(int i =0;i<poolsize;i++){
- 			Color cc = colors[i];
- 			int offr=(int)(cc.getRed()*lratio);
- 			int offg=(int)(cc.getGreen()*lratio);
- 			int offb=(int)(cc.getBlue()*lratio);
+ 			int offr=(int)(colors[i][R]*lratio);
+ 			int offg=(int)(colors[i][G]*lratio);
+ 			int offb=(int)(colors[i][B]*lratio);
  			if(lit[offr][offg][offb]==0){
  				ccount++;
  				lit[offr][offg][offb] = i+1;
  			}
  		}
- 		int numpos =6;
- 		int[][] pos = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
+ 		//int[][] pos = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
+ 		//int[][] pos = {{1,1,0},{1,0,1},{0,1,1},{1,0,0},{0,1,0},{0,0,1},{-1,-1,0},{-1,0,-1},{0,-1,-1},{-1,0,0},{0,-1,0},{0,0,-1},{1,-1,0},{1,0,-1},{0,1,-1},{-1,1,0},{-1,0,1},{0,-1,1}};
+ 		int[][] pos = {{1,1,1},{-1,-1,-1},{-1,1,1},{1,-1,1},{1,1,-1},{-1,-1,1},{1,-1,-1},{-1,1,-1},{1,1,0},{1,0,1},{0,1,1},{1,0,0},{0,1,0},{0,0,1},{-1,-1,0},{-1,0,-1},{0,-1,-1},{-1,0,0},{0,-1,0},{0,0,-1},{1,-1,0},{1,0,-1},{0,1,-1},{-1,1,0},{-1,0,1},{0,-1,1}};
+ 		int numpos = pos.length;
  		int[][][] tlit = new int[ls][ls][ls];
+ 		//for(int i=0;i<4;i++){
  		while(ccount<total){
  			for(int r =0;r<ls;r++){
  				for(int g =0;g<ls;g++){
@@ -118,26 +148,16 @@ public class MTG {
  							int sel = lit[r][g][b];//the image to be drawn is that
  							
  							for(int p=0;p<numpos;p++){
- 							//for(int z=-1;z<=1;z++){//for a 1*1 area around that square
- 							//	for(int y=-1;y<=1;y++){
- 							//		for(int x=-1;x<=1;x++){
- 										
- 										int rz = r+pos[p][0];
- 										int gy = g+pos[p][1];
- 										int bx = b+pos[p][2];
- 										
- 										if(rz>-1&&rz<ls&&gy>-1&&gy<ls&&bx>-1&&bx<ls&&lit[rz][gy][bx]==0&&tlit[rz][gy][bx]==0){//if it's in bounds, if theres nothing there on the temp lit or the actual lit //&&tlit[rz][gy][bx]==0
- 											tlit[rz][gy][bx] = sel;//place
- 											ccount++;
- 										}
- 										
- 									//}
- 								//}
- 							//}
+								int rz = r+pos[p][0];
+								int gy = g+pos[p][1];
+								int bx = b+pos[p][2];
+								
+								if(rz>-1&&rz<ls&&gy>-1&&gy<ls&&bx>-1&&bx<ls&&lit[rz][gy][bx]==0&&tlit[rz][gy][bx]==0){//&&tlit[rz][gy][bx]==0
+									tlit[rz][gy][bx] = sel;//place
+									ccount++;
+								}
  							}
- 							
  						}
- 						
  					}
  				}
  			}
@@ -195,7 +215,7 @@ public class MTG {
 		}
 	}*/
 	
-	public void addtocolors(Color c){
+	public void addtocolors(int[] c){
 		colors[oindex] = c;
 		oindex++;
 	}
@@ -215,7 +235,7 @@ public class MTG {
 		poolsize = files.length;
 		cards = new BufferedImage[poolsize];
 		full = new BufferedImage[poolsize];
-		colors = new Color[poolsize];
+		colors = new int[poolsize][3];
 		for(int i=0;i<poolsize;i++){
 			try{
 				BufferedImage ti = ImageIO.read(files[i]);
@@ -256,25 +276,26 @@ public class MTG {
 		return nn;
 	}
 	
-	public Color getAvg(BufferedImage b){
+	public int[] getAvg(BufferedImage b){
 		int bwid = b.getWidth();
 		int bhid = b.getHeight();
 		int cst = bhid*bwid;
-		Color[] cs = new Color[cst];
+		int[][] cs = new int[cst][3];
 		int t=0;
 		for(int y=0;y<b.getHeight();y++){
 			for(int x=0;x<b.getWidth();x++){
-				cs[t] = new Color(b.getRGB(x, y));
+				Color ct = new Color(b.getRGB(x, y));
+				cs[t] = new int[]{ct.getRed(),ct.getGreen(),ct.getBlue()};
 				t++;
 			}
 		}
 		int[] tots = new int[3];
 		for(int i=0;i<cst;i++){
-			tots[0] += cs[i].getRed();
-			tots[1] += cs[i].getGreen();
-			tots[2] += cs[i].getBlue();
+			tots[0] += cs[i][0];
+			tots[1] += cs[i][1];
+			tots[2] += cs[i][2];
 		}
-		return new Color(tots[0]/cst,tots[1]/cst,tots[2]/cst);
+		return new int[]{tots[0]/cst,tots[1]/cst,tots[2]/cst};
 	}
 	
 	public BufferedImage scale(BufferedImage b, int iw, int ih){
@@ -320,7 +341,8 @@ public class MTG {
 			Graphics g = desample.createGraphics();
 			for(int y=0;y<hhh;y++){
 				for(int x=0;x<www;x++){
-					sampp.setRGB(x, y, getAvg(crop(resample,(int)(x*wiw),(int)(y*hih),(int)(x*wiw+wiw),(int)(y*hih+hih))).getRGB());
+					int[] ah = getAvg(crop(resample,(int)(x*wiw),(int)(y*hih),(int)(x*wiw+wiw),(int)(y*hih+hih)));
+					sampp.setRGB(x, y, new Color(ah[R],ah[G],ah[B]).getRGB());
 					Color tc = new Color(sampp.getRGB(x, y));
 					int vari = lit[(int)(tc.getRed()*lratio)][(int)(tc.getGreen()*lratio)][(int)(tc.getBlue()*lratio)]-1;
 					g.drawImage(cards[vari], x*picw, y*pich, picw, pich, null);
@@ -364,7 +386,9 @@ public class MTG {
 	
 	public boolean pull(){
 		BufferedImage now;
-		int numpass = (int)(Math.random()*420617+43579);
+		int lowpass = 382889;
+		int highpass = 430645;
+		int numpass = (int)(Math.random()*(highpass-lowpass+1)+lowpass);
 		now = getCard(numpass);
 		if(same(now, def)){
 			return false;

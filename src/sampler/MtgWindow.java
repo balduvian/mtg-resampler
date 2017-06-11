@@ -175,11 +175,9 @@ public class MtgWindow extends JFrame{
 				g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 		        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 		        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		        g.setColor(Color.white);
+		        g.setColor(Color.DARK_GRAY);
 			    g.fillRect(0, 0, rr.getWidth(), rr.getHeight());
 			    
-			   // superdebug
-			   // try{
 				    for(int y=0;y<27;y++){
 						for(int x=0;x<27;x++){
 							try{
@@ -188,11 +186,12 @@ public class MtgWindow extends JFrame{
 							}
 						}
 					}
-			   // }catch(Exception ex){}
 			    
-				if(MTG.desample != null){
-				    g.drawImage(MTG.resample,0,0,(int)(MTG.desample.getWidth()*scale),(int)(MTG.desample.getHeight()*scale),null);
-					g.drawImage(MTG.desample,0,0,(int)(MTG.desample.getWidth()*scale),(int)(MTG.desample.getHeight()*scale),null);
+				if(MTG.desample != null && MTG.desample != null){
+					try{
+						g.drawImage(MTG.resample,0,0,(int)(MTG.desample.getWidth()*scale),(int)(MTG.desample.getHeight()*scale),null);
+						g.drawImage(MTG.desample,0,0,(int)(MTG.desample.getWidth()*scale),(int)(MTG.desample.getHeight()*scale),null);
+					}catch(Exception ex){}
 				}
 			}finally{
 				g.dispose();
